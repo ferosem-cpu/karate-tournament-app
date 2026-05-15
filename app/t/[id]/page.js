@@ -47,10 +47,12 @@ export default function PublicTournamentPage() {
         <div className="absolute inset-0 bg-gradient-to-t from-background via-background/50 to-transparent" />
         <div className="absolute top-4 left-4 right-4 flex items-center justify-between">
           <div className="flex items-center gap-2">
-            <div className="h-8 w-8 rounded-md gradient-red-gold flex items-center justify-center">
-              <Swords className="h-4 w-4 text-white" />
-            </div>
-            <span className="text-xs font-bold tracking-widest uppercase">Kohai Platform</span>
+            <img
+              src="https://customer-assets.emergentagent.com/job_kohai-platform/artifacts/kx7xfew2_platformlogo.png"
+              alt="Tournament Hub"
+              className="h-8 w-8 rounded-md object-cover ring-1 ring-white/10"
+            />
+            <span className="text-xs font-bold tracking-widest uppercase">Tournament Hub</span>
           </div>
           <Badge variant="outline" className={statusColor(t.status)}>{statusLabel(t.status)}</Badge>
         </div>
@@ -117,7 +119,7 @@ export default function PublicTournamentPage() {
         </Card>
 
         <footer className="text-center text-xs text-muted-foreground py-8">
-          Powered by <span className="text-gold font-semibold">KOHAI</span> · Karate Tournament Platform
+          Powered by <span className="text-gold font-semibold">TOURNAMENT HUB</span> · Global Competition Platform
         </footer>
       </div>
     </div>

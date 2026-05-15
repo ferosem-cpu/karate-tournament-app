@@ -3,8 +3,8 @@ import { AuthProvider } from '@/lib/auth-context';
 import { Toaster } from '@/components/ui/sonner';
 
 export const metadata = {
-  title: 'Kohai — Karate Tournament Platform',
-  description: 'Professional martial arts tournament management for organizers, dojos, coaches, referees and athletes.',
+  title: 'Tournament Hub — Global Competition Platform',
+  description: 'Professional tournament management for organizers, dojos, coaches, referees and athletes.',
 };
 
 export default function RootLayout({ children }) {

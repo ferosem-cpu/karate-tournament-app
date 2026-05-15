@@ -73,28 +73,30 @@ export default function LoginPage() {
         <div className="absolute bottom-0 right-0 w-[28rem] h-[28rem] rounded-full bg-accent/10 blur-3xl" />
         <div className="relative z-10 flex flex-col justify-between p-12 w-full">
           <div className="flex items-center gap-3">
-            <div className="h-11 w-11 rounded-lg gradient-red-gold flex items-center justify-center shadow-lg shadow-primary/30">
-              <Swords className="h-6 w-6 text-white" />
-            </div>
+            <img
+              src="https://customer-assets.emergentagent.com/job_kohai-platform/artifacts/kx7xfew2_platformlogo.png"
+              alt="Tournament Hub"
+              className="h-12 w-12 rounded-lg object-cover ring-1 ring-border/60 shadow-lg shadow-primary/30"
+            />
             <div>
-              <div className="text-xl font-bold tracking-tight">KOHAI</div>
-              <div className="text-xs text-muted-foreground">Tournament Platform</div>
+              <div className="text-xl font-bold tracking-tight">TOURNAMENT HUB</div>
+              <div className="text-xs text-muted-foreground">Global Competition Platform</div>
             </div>
           </div>
           <div className="space-y-6">
             <h1 className="text-5xl font-extrabold leading-tight tracking-tight">
-              The home of <span className="text-gold">Karate</span> <br /> tournaments.
+              Run world-class <span className="text-gold">tournaments</span>.
             </h1>
             <p className="text-lg text-muted-foreground max-w-md">
-              Run premier martial arts events end-to-end — registrations, dojos, kohai, categories, tatamis and live brackets.
+              From karate to global competitions — manage registrations, dojos, athletes, categories, tatamis and live brackets in one place.
             </p>
             <div className="flex gap-6 pt-4">
               <Stat label="Tournaments" value="∞" />
               <Stat label="Dojos" value="∞" />
-              <Stat label="Kohai" value="∞" />
+              <Stat label="Athletes" value="∞" />
             </div>
           </div>
-          <div className="text-xs text-muted-foreground">© 2025 Kohai Platform · Built for India, ready for the world.</div>
+          <div className="text-xs text-muted-foreground">© 2025 Tournament Hub · Built for India, ready for the world.</div>
         </div>
       </div>
 
@@ -103,10 +105,12 @@ export default function LoginPage() {
         <Card className="w-full max-w-md border-border/60 bg-card/60 backdrop-blur">
           <CardContent className="p-8">
             <div className="flex lg:hidden items-center gap-3 mb-6">
-              <div className="h-10 w-10 rounded-lg gradient-red-gold flex items-center justify-center">
-                <Swords className="h-5 w-5 text-white" />
-              </div>
-              <div className="font-bold text-lg">KOHAI</div>
+              <img
+                src="https://customer-assets.emergentagent.com/job_kohai-platform/artifacts/kx7xfew2_platformlogo.png"
+                alt="Tournament Hub"
+                className="h-10 w-10 rounded-md object-cover"
+              />
+              <div className="font-bold text-lg">TOURNAMENT HUB</div>
             </div>
             <h2 className="text-2xl font-bold mb-1">Welcome</h2>
             <p className="text-sm text-muted-foreground mb-6">Sign in to manage your tournaments.</p>

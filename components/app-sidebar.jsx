@@ -41,12 +41,14 @@ export default function AppSidebar() {
   return (
     <aside className="hidden md:flex w-64 shrink-0 flex-col bg-sidebar text-sidebar-foreground border-r border-sidebar-border">
       <div className="px-5 py-5 flex items-center gap-3 border-b border-sidebar-border">
-        <div className="h-9 w-9 rounded-md gradient-red-gold flex items-center justify-center shadow-md shadow-primary/30">
-          <Swords className="h-5 w-5 text-white" />
-        </div>
+        <img
+          src="https://customer-assets.emergentagent.com/job_kohai-platform/artifacts/kx7xfew2_platformlogo.png"
+          alt="Tournament Hub"
+          className="h-10 w-10 rounded-md object-cover ring-1 ring-sidebar-border shadow-md shadow-primary/20"
+        />
         <div>
-          <div className="font-bold tracking-tight">KOHAI</div>
-          <div className="text-[10px] uppercase tracking-widest text-muted-foreground">Karate Platform</div>
+          <div className="font-bold tracking-tight leading-none">TOURNAMENT HUB</div>
+          <div className="text-[10px] uppercase tracking-widest text-muted-foreground mt-1">Global Competition</div>
         </div>
       </div>
 
