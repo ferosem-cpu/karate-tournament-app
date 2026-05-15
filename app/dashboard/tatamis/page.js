@@ -1,5 +1,6 @@
 'use client';
 
+import Link from 'next/link';
 import { useEffect, useState } from 'react';
 import { collection, deleteDoc, doc, onSnapshot, orderBy, query } from 'firebase/firestore';
 import { db } from '@/lib/firebase';
@@ -9,7 +10,7 @@ import { Badge } from '@/components/ui/badge';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import PageHeader from '@/components/page-header';
 import TatamiFormDialog from '@/components/tatami-form-dialog';
-import { Plus, Grid3x3, Pencil, Trash2, User, Activity, Pause, Lock } from 'lucide-react';
+import { Plus, Grid3x3, Pencil, Trash2, User, Activity, Pause, Lock, ExternalLink } from 'lucide-react';
 import { toast } from 'sonner';
 
 const STATUS_META = {
@@ -91,7 +92,8 @@ export default function TatamisPage() {
                     <div className="text-xs text-muted-foreground mt-3 flex items-center gap-1.5"><User className="h-3 w-3" /> {t.assignedRefereeName || 'Unassigned'}</div>
                     {t.notes && <p className="text-xs text-muted-foreground mt-1">{t.notes}</p>}
                     <div className="flex gap-2 mt-4">
-                      <Button size="sm" variant="outline" onClick={() => openEdit(t)} className="flex-1"><Pencil className="h-3.5 w-3.5 mr-1" /> Edit</Button>
+                      <Button asChild size="sm" variant="outline" className="flex-1 border-primary/40 text-primary hover:bg-primary/10"><Link href={`/tatami/${t.id}`} target="_blank"><ExternalLink className="h-3.5 w-3.5 mr-1" /> Live Screen</Link></Button>
+                      <Button size="sm" variant="ghost" onClick={() => openEdit(t)}><Pencil className="h-3.5 w-3.5" /></Button>
                       <Button size="sm" variant="ghost" onClick={() => remove(t.id, t.name)}><Trash2 className="h-3.5 w-3.5 text-destructive" /></Button>
                     </div>
                   </CardContent>

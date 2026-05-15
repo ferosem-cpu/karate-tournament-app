@@ -15,6 +15,8 @@ import {
   LogOut,
   Swords,
   ChevronRight,
+  HardDrive,
+  Bell,
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
@@ -28,6 +30,8 @@ const NAV = [
   { href: '/dashboard/categories', label: 'Categories', icon: Tags },
   { href: '/dashboard/tatamis', label: 'Tatamis', icon: Grid3x3 },
   { href: '/dashboard/reports', label: 'Reports', icon: BarChart3 },
+  { href: '/dashboard/media', label: 'Media', icon: HardDrive },
+  { href: '/dashboard/notifications', label: 'Notifications', icon: Bell },
   { href: '/dashboard/settings', label: 'Settings', icon: Settings },
 ];
 

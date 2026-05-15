@@ -12,7 +12,7 @@ import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import PageHeader from '@/components/page-header';
 import RegistrationDialog from '@/components/registration-dialog';
-import { Pencil, ExternalLink, Calendar, MapPin, FileText, Trophy, Copy, Grid3x3, Users, Plus, Tags, Trash2 } from 'lucide-react';
+import { Pencil, ExternalLink, Calendar, MapPin, FileText, Trophy, Copy, Grid3x3, Users, Plus, Tags, Trash2, Zap, Award } from 'lucide-react';
 import { toast } from 'sonner';
 import { formatDate, statusColor, statusLabel } from '@/lib/utils';
 import { beltClass } from '@/lib/constants';
@@ -59,7 +59,9 @@ export default function TournamentDetailPage() {
           <>
             <Button variant="outline" onClick={copy}><Copy className="h-4 w-4 mr-2" /> Copy public link</Button>
             <Button asChild variant="outline"><Link href={`/t/${id}`} target="_blank"><ExternalLink className="h-4 w-4 mr-2" /> Public Page</Link></Button>
-            <Button asChild className="bg-primary hover:bg-primary/90"><Link href={`/dashboard/tournaments/${id}/edit`}><Pencil className="h-4 w-4 mr-2" /> Edit</Link></Button>
+            <Button asChild variant="outline" className="border-amber-500/40 text-amber-300 hover:bg-amber-500/10 hover:text-amber-200"><Link href={`/dashboard/tournaments/${id}/certificates`}><Award className="h-4 w-4 mr-2" /> Certificates</Link></Button>
+            <Button asChild className="bg-red-600 hover:bg-red-700 text-white"><Link href={`/dashboard/tournaments/${id}/live`}><Zap className="h-4 w-4 mr-2" /> Live Operations</Link></Button>
+            <Button asChild variant="outline"><Link href={`/dashboard/tournaments/${id}/edit`}><Pencil className="h-4 w-4 mr-2" /> Edit</Link></Button>
           </>
         }
       />

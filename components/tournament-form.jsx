@@ -3,8 +3,8 @@
 import { useState, useRef } from 'react';
 import { useRouter } from 'next/navigation';
 import { addDoc, collection, doc, serverTimestamp, updateDoc } from 'firebase/firestore';
-import { ref as sRef, uploadBytesResumable, getDownloadURL } from 'firebase/storage';
-import { db, storage } from '@/lib/firebase';
+import { db } from '@/lib/firebase';
+import { uploadFileWithTracking } from '@/lib/media';
 import { useAuth } from '@/lib/auth-context';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -13,6 +13,7 @@ import { Textarea } from '@/components/ui/textarea';
 import { Card, CardContent } from '@/components/ui/card';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Progress } from '@/components/ui/progress';
+import RetentionSelect from '@/components/retention-select';
 import { toast } from 'sonner';
 import { Loader2, Upload, FileText, Image as ImageIcon, X } from 'lucide-react';
 
@@ -124,6 +125,9 @@ export default function TournamentForm({ initial, id }) {
         <CardContent className="p-6">
           <h2 className="font-semibold text-lg mb-1">Tournament Branding</h2>
           <p className="text-sm text-muted-foreground mb-5">Logo, banner image and brochure visible on the public tournament page.</p>
+          <div className="mb-5 max-w-xs">
+            <RetentionSelect value={form.retentionPeriod} onChange={(v) => set('retentionPeriod', v)} label="Media Retention (applies to all uploads)" />
+          </div>
           <div className="grid md:grid-cols-3 gap-4">
             <UploadBox
               label="Logo"
