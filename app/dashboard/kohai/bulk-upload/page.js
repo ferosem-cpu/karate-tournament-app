@@ -12,7 +12,7 @@ import { Badge } from '@/components/ui/badge';
 import { Progress } from '@/components/ui/progress';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import PageHeader from '@/components/page-header';
-import { Upload, FileDown, FileSpreadsheet, CheckCircle2, AlertCircle, Trash2, Loader2 } from 'lucide-react';
+import { Upload, FileDown, FileSpreadsheet, CheckCircle2, AlertCircle, Trash2, Loader2, Sheet } from 'lucide-react';
 import { toast } from 'sonner';
 import { BELTS, GENDERS } from '@/lib/constants';
 
@@ -65,6 +65,20 @@ export default function BulkUploadPage() {
     const url = URL.createObjectURL(blob);
     const a = document.createElement('a'); a.href = url; a.download = name; a.click();
     URL.revokeObjectURL(url);
+  };
+
+  const openInGoogleSheets = async () => {
+    // Build TSV (tab-separated) for clean paste into Google Sheets
+    const headerLine = TEMPLATE_HEADERS.join('\t');
+    const dataLines = TEMPLATE_SAMPLE.map((r) => TEMPLATE_HEADERS.map((h) => r[h] ?? '').join('\t'));
+    const tsv = [headerLine, ...dataLines].join('\n');
+    try {
+      await navigator.clipboard.writeText(tsv);
+      toast.success('Template copied! Paste with Ctrl+V (Cmd+V on Mac) into the new Sheet.', { duration: 6000 });
+    } catch {
+      toast.message('Open the new Google Sheet and paste the template manually.');
+    }
+    window.open('https://sheets.new', '_blank', 'noopener,noreferrer');
   };
 
   const validateRow = (r) => {
@@ -172,6 +186,7 @@ export default function BulkUploadPage() {
           <>
             <Button variant="outline" onClick={() => downloadTemplate('csv')}><FileDown className="h-4 w-4 mr-2" /> CSV Template</Button>
             <Button variant="outline" onClick={() => downloadTemplate('xlsx')}><FileDown className="h-4 w-4 mr-2" /> Excel Template</Button>
+            <Button variant="outline" onClick={openInGoogleSheets} className="border-emerald-500/40 text-emerald-300 hover:bg-emerald-500/10 hover:text-emerald-200"><Sheet className="h-4 w-4 mr-2" /> Google Sheets</Button>
           </>
         }
       />
