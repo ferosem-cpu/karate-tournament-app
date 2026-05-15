@@ -1,0 +1,111 @@
+'use client';
+
+import { useState, useEffect } from 'react';
+import { addDoc, collection, doc, onSnapshot, query, serverTimestamp, where } from 'firebase/firestore';
+import { db } from '@/lib/firebase';
+import { useAuth } from '@/lib/auth-context';
+import { Button } from '@/components/ui/button';
+import { Label } from '@/components/ui/label';
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter } from '@/components/ui/dialog';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
+import { Input } from '@/components/ui/input';
+import { toast } from 'sonner';
+import { Loader2 } from 'lucide-react';
+
+export default function RegistrationDialog({ open, onOpenChange, tournament }) {
+  const { user } = useAuth();
+  const [athletes, setAthletes] = useState([]);
+  const [categories, setCategories] = useState([]);
+  const [busy, setBusy] = useState(false);
+  const [athleteId, setAthleteId] = useState('');
+  const [categoryId, setCategoryId] = useState('');
+  const [search, setSearch] = useState('');
+
+  useEffect(() => {
+    if (!open) return;
+    const u1 = onSnapshot(collection(db, 'athletes'), (s) => setAthletes(s.docs.map((d) => ({ id: d.id, ...d.data() }))));
+    const u2 = onSnapshot(collection(db, 'categories'), (s) => setCategories(s.docs.map((d) => ({ id: d.id, ...d.data() }))));
+    return () => { u1(); u2(); };
+  }, [open]);
+
+  useEffect(() => { if (open) { setAthleteId(''); setCategoryId(''); setSearch(''); } }, [open]);
+
+  const tournamentCategories = categories.filter((c) => !c.tournamentId || c.tournamentId === '__global__' || c.tournamentId === tournament?.id);
+  const filteredAthletes = athletes.filter((a) => (a.fullName || '').toLowerCase().includes(search.toLowerCase()));
+
+  const submit = async (e) => {
+    e.preventDefault();
+    if (!athleteId) return toast.error('Select a kohai');
+    const a = athletes.find((x) => x.id === athleteId);
+    const c = categories.find((x) => x.id === categoryId);
+    setBusy(true);
+    try {
+      await addDoc(collection(db, 'tournament_registrations'), {
+        tournamentId: tournament.id,
+        tournamentName: tournament.name,
+        athleteId,
+        athleteName: a?.fullName || '',
+        athletePhotoUrl: a?.photoUrl || '',
+        athleteBelt: a?.belt || '',
+        athleteWeight: a?.weight || null,
+        athleteGender: a?.gender || '',
+        athleteEventType: a?.eventType || '',
+        dojoId: a?.dojoId || null,
+        dojoName: a?.dojoName || '',
+        categoryId: categoryId || null,
+        categoryName: c?.name || '',
+        status: 'approved',
+        createdAt: serverTimestamp(),
+        updatedAt: serverTimestamp(),
+        createdBy: user.uid,
+      });
+      toast.success('Registration added');
+      onOpenChange(false);
+    } catch (err) {
+      toast.error(err.message || 'Failed to register');
+    } finally { setBusy(false); }
+  };
+
+  return (
+    <Dialog open={open} onOpenChange={onOpenChange}>
+      <DialogContent className="max-w-xl">
+        <DialogHeader>
+          <DialogTitle>Register Kohai to Tournament</DialogTitle>
+          <DialogDescription>Add an athlete to <strong>{tournament?.name}</strong>.</DialogDescription>
+        </DialogHeader>
+        <form onSubmit={submit} className="space-y-4 mt-2">
+          <div>
+            <Label className="text-xs uppercase tracking-wider text-muted-foreground mb-1.5 block">Search Kohai</Label>
+            <Input value={search} onChange={(e) => setSearch(e.target.value)} placeholder="Type to filter…" />
+          </div>
+          <div>
+            <Label className="text-xs uppercase tracking-wider text-muted-foreground mb-1.5 block">Kohai *</Label>
+            <Select value={athleteId} onValueChange={setAthleteId}>
+              <SelectTrigger><SelectValue placeholder="Select kohai…" /></SelectTrigger>
+              <SelectContent className="max-h-72">
+                {filteredAthletes.length === 0 ? <div className="px-2 py-1.5 text-xs text-muted-foreground">No kohai found</div> :
+                  filteredAthletes.map((a) => <SelectItem key={a.id} value={a.id}>{a.fullName} {a.dojoName ? `· ${a.dojoName}` : ''} {a.belt ? `· ${a.belt}` : ''}</SelectItem>)}
+              </SelectContent>
+            </Select>
+          </div>
+          <div>
+            <Label className="text-xs uppercase tracking-wider text-muted-foreground mb-1.5 block">Category</Label>
+            <Select value={categoryId} onValueChange={setCategoryId}>
+              <SelectTrigger><SelectValue placeholder="Select category (optional)…" /></SelectTrigger>
+              <SelectContent>
+                {tournamentCategories.length === 0 ? <div className="px-2 py-1.5 text-xs text-muted-foreground">No categories — create one first</div> :
+                  tournamentCategories.map((c) => <SelectItem key={c.id} value={c.id}>{c.name} · {c.eventType}</SelectItem>)}
+              </SelectContent>
+            </Select>
+          </div>
+          <DialogFooter>
+            <Button type="button" variant="outline" onClick={() => onOpenChange(false)}>Cancel</Button>
+            <Button type="submit" disabled={busy} className="bg-primary hover:bg-primary/90 min-w-[140px]">
+              {busy ? <Loader2 className="h-4 w-4 animate-spin" /> : 'Add Registration'}
+            </Button>
+          </DialogFooter>
+        </form>
+      </DialogContent>
+    </Dialog>
+  );
+}
