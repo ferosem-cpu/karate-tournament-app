@@ -44,6 +44,8 @@ export default function TatamiFormDialog({ open, onOpenChange, tournaments, init
   const submit = async (e) => {
     e.preventDefault();
     if (!form.name.trim()) return toast.error('Tatami name is required');
+    if (!form.tournamentId) return toast.error('Tournament is required \u2014 select one before creating a tatami');
+    if (!form.assignedRefereeName.trim()) return toast.error('Assigned Referee is required');
     setBusy(true);
     try {
       const payload = { ...form, updatedAt: serverTimestamp(), ownerId: user.uid };
@@ -71,8 +73,8 @@ export default function TatamiFormDialog({ open, onOpenChange, tournaments, init
         </DialogHeader>
         <form onSubmit={submit} className="space-y-4 mt-2">
           <F label="Tatami Name *"><Input value={form.name} onChange={(e) => set('name', e.target.value)} required placeholder="Tatami 1" /></F>
-          <F label="Tournament">
-            <Select value={form.tournamentId} onValueChange={onTournamentChange}>
+          <F label="Tournament *">
+            <Select value={form.tournamentId || undefined} onValueChange={onTournamentChange}>
               <SelectTrigger><SelectValue placeholder="Select tournament…" /></SelectTrigger>
               <SelectContent>{tournaments.map((t) => <SelectItem key={t.id} value={t.id}>{t.name}</SelectItem>)}</SelectContent>
             </Select>
@@ -84,7 +86,7 @@ export default function TatamiFormDialog({ open, onOpenChange, tournaments, init
                 <SelectContent>{STATUSES.map((s) => <SelectItem key={s.value} value={s.value}>{s.label}</SelectItem>)}</SelectContent>
               </Select>
             </F>
-            <F label="Assigned Referee"><Input value={form.assignedRefereeName} onChange={(e) => set('assignedRefereeName', e.target.value)} placeholder="Sensei name" /></F>
+            <F label="Assigned Referee *"><Input value={form.assignedRefereeName} onChange={(e) => set('assignedRefereeName', e.target.value)} required placeholder="Sensei name" /></F>
           </div>
           <F label="Notes"><Input value={form.notes} onChange={(e) => set('notes', e.target.value)} placeholder="Optional notes…" /></F>
           <DialogFooter>

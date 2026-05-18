@@ -65,22 +65,36 @@ export default function LoginPage() {
   };
 
   return (
-    <div className="min-h-screen grid lg:grid-cols-2">
+    <div className="min-h-screen grid lg:grid-cols-2 relative overflow-hidden">
+      {/* Background watermark logo (whole screen) */}
+      <img
+        src="https://customer-assets.emergentagent.com/job_kohai-platform/artifacts/kx7xfew2_platformlogo.png"
+        alt=""
+        aria-hidden
+        className="pointer-events-none select-none absolute -right-32 top-1/2 -translate-y-1/2 w-[900px] max-w-none opacity-[0.04] blur-sm"
+      />
+      <img
+        src="https://customer-assets.emergentagent.com/job_kohai-platform/artifacts/kx7xfew2_platformlogo.png"
+        alt=""
+        aria-hidden
+        className="pointer-events-none select-none absolute -left-48 -bottom-48 w-[600px] max-w-none opacity-[0.06] rotate-12"
+      />
+
       {/* Left brand panel */}
       <div className="hidden lg:flex relative overflow-hidden bg-gradient-to-br from-black via-zinc-950 to-red-950">
         <div className="absolute inset-0 bg-grid opacity-30" />
         <div className="absolute -top-32 -left-32 w-96 h-96 rounded-full bg-primary/20 blur-3xl" />
         <div className="absolute bottom-0 right-0 w-[28rem] h-[28rem] rounded-full bg-accent/10 blur-3xl" />
         <div className="relative z-10 flex flex-col justify-between p-12 w-full">
-          <div className="flex items-center gap-3">
+          <div className="flex items-center gap-4">
             <img
               src="https://customer-assets.emergentagent.com/job_kohai-platform/artifacts/kx7xfew2_platformlogo.png"
               alt="Tournament Hub"
-              className="h-12 w-12 rounded-lg object-cover ring-1 ring-border/60 shadow-lg shadow-primary/30"
+              className="h-16 w-16 rounded-xl object-cover ring-1 ring-border/60 shadow-xl shadow-primary/40"
             />
             <div>
-              <div className="text-xl font-bold tracking-tight">TOURNAMENT HUB</div>
-              <div className="text-xs text-muted-foreground">Global Competition Platform</div>
+              <div className="text-3xl font-extrabold tracking-tight leading-none">TOURNAMENT HUB</div>
+              <div className="text-sm text-muted-foreground mt-1.5">Global Competition Platform</div>
             </div>
           </div>
           <div className="space-y-6">
@@ -101,16 +115,19 @@ export default function LoginPage() {
       </div>
 
       {/* Right form */}
-      <div className="flex items-center justify-center p-6 lg:p-12">
-        <Card className="w-full max-w-md border-border/60 bg-card/60 backdrop-blur">
+      <div className="flex items-center justify-center p-6 lg:p-12 relative z-10 lg:col-start-2">
+        <Card className="w-full max-w-md border-border/60 bg-card/70 backdrop-blur-md shadow-2xl">
           <CardContent className="p-8">
             <div className="flex lg:hidden items-center gap-3 mb-6">
               <img
                 src="https://customer-assets.emergentagent.com/job_kohai-platform/artifacts/kx7xfew2_platformlogo.png"
                 alt="Tournament Hub"
-                className="h-10 w-10 rounded-md object-cover"
+                className="h-14 w-14 rounded-lg object-cover shadow-lg shadow-primary/30"
               />
-              <div className="font-bold text-lg">TOURNAMENT HUB</div>
+              <div>
+                <div className="font-extrabold text-xl tracking-tight">TOURNAMENT HUB</div>
+                <div className="text-[10px] text-muted-foreground uppercase tracking-widest">Global Competition</div>
+              </div>
             </div>
             <h2 className="text-2xl font-bold mb-1">Welcome</h2>
             <p className="text-sm text-muted-foreground mb-6">Sign in to manage your tournaments.</p>

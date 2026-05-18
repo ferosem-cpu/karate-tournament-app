@@ -48,11 +48,11 @@ export default function AppSidebar() {
         <img
           src="https://customer-assets.emergentagent.com/job_kohai-platform/artifacts/kx7xfew2_platformlogo.png"
           alt="Tournament Hub"
-          className="h-10 w-10 rounded-md object-cover ring-1 ring-sidebar-border shadow-md shadow-primary/20"
+          className="h-12 w-12 rounded-md object-cover ring-1 ring-sidebar-border shadow-md shadow-primary/30"
         />
         <div>
-          <div className="font-bold tracking-tight leading-none">TOURNAMENT HUB</div>
-          <div className="text-[10px] uppercase tracking-widest text-muted-foreground mt-1">Global Competition</div>
+          <div className="font-extrabold text-base tracking-tight leading-none">TOURNAMENT HUB</div>
+          <div className="text-[10px] uppercase tracking-widest text-muted-foreground mt-1.5">Global Competition</div>
         </div>
       </div>
 
