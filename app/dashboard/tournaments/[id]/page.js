@@ -16,9 +16,10 @@ import { Pencil, ExternalLink, Calendar, MapPin, FileText, Trophy, Copy, Grid3x3
 import { toast } from 'sonner';
 import { formatDate, statusColor, statusLabel } from '@/lib/utils';
 import { beltClass } from '@/lib/constants';
-
+import { useAuth } from '@/lib/auth-context';
 export default function TournamentDetailPage() {
   const { id } = useParams();
+  const { profile } = useAuth();
   const [t, setT] = useState(null);
   const [loading, setLoading] = useState(true);
   const [registrations, setRegistrations] = useState([]);
@@ -49,7 +50,9 @@ export default function TournamentDetailPage() {
 
   if (loading) return <div className="text-muted-foreground text-sm">Loading…</div>;
   if (!t) return <div className="text-muted-foreground text-sm">Tournament not found.</div>;
-
+const canEdit =
+  profile?.role === 'super_admin' ||
+  profile?.uid === t?.ownerId;
   return (
     <>
       <PageHeader
@@ -61,7 +64,14 @@ export default function TournamentDetailPage() {
             <Button asChild variant="outline"><Link href={`/t/${id}`} target="_blank"><ExternalLink className="h-4 w-4 mr-2" /> Public Page</Link></Button>
             <Button asChild variant="outline" className="border-amber-500/40 text-amber-300 hover:bg-amber-500/10 hover:text-amber-200"><Link href={`/dashboard/tournaments/${id}/certificates`}><Award className="h-4 w-4 mr-2" /> Certificates</Link></Button>
             <Button asChild className="bg-red-600 hover:bg-red-700 text-white"><Link href={`/dashboard/tournaments/${id}/live`}><Zap className="h-4 w-4 mr-2" /> Live Operations</Link></Button>
-            <Button asChild variant="outline"><Link href={`/dashboard/tournaments/${id}/edit`}><Pencil className="h-4 w-4 mr-2" /> Edit</Link></Button>
+            {canEdit && (
+  <Button asChild variant="outline">
+    <Link href={`/dashboard/tournaments/${id}/edit`}>
+      <Pencil className="h-4 w-4 mr-2" />
+      Edit
+    </Link>
+  </Button>
+)}
           </>
         }
       />

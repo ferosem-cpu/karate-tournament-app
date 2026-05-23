@@ -10,12 +10,16 @@ import { Badge } from '@/components/ui/badge';
 import { Input } from '@/components/ui/input';
 import PageHeader from '@/components/page-header';
 import { Plus, Trophy, Search, Calendar, MapPin, ExternalLink } from 'lucide-react';
+import { useAuth } from '@/lib/auth-context';
+import { isAdminOrOrganizer } from '@/lib/constants';
 import { formatDate, statusColor, statusLabel } from '@/lib/utils';
-
 export default function TournamentsPage() {
+  const { profile } = useAuth();
+  const canManage = isAdminOrOrganizer(profile?.role);
   const [tournaments, setTournaments] = useState([]);
   const [search, setSearch] = useState('');
   const [loading, setLoading] = useState(true);
+  
 
   useEffect(() => {
     const q = query(collection(db, 'tournaments'), orderBy('createdAt', 'desc'));
@@ -32,16 +36,20 @@ export default function TournamentsPage() {
 
   return (
     <>
-      <PageHeader
-        title="Tournaments"
-        description="All tournaments managed on Kohai. Create, edit, and share public pages."
-        actions={
-          <Button asChild className="bg-primary hover:bg-primary/90">
-            <Link href="/dashboard/tournaments/new"><Plus className="h-4 w-4 mr-2" /> New Tournament</Link>
-          </Button>
-        }
-      />
-
+  <PageHeader
+  title="Tournaments"
+  description="All tournaments managed on Kohai. Create, edit, and share public pages."
+  actions={
+    canManage && (
+      <Button asChild className="bg-primary hover:bg-primary/90">
+        <Link href="/dashboard/tournaments/new">
+          <Plus className="h-4 w-4 mr-2" />
+          New Tournament
+        </Link>
+      </Button>
+    )
+  }
+/>
       <div className="mb-5 relative max-w-md">
         <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
         <Input className="pl-9" placeholder="Search tournaments…" value={search} onChange={(e) => setSearch(e.target.value)} />
@@ -55,9 +63,14 @@ export default function TournamentsPage() {
             <Trophy className="h-12 w-12 mx-auto text-primary mb-3" />
             <h3 className="font-semibold text-lg">No tournaments yet</h3>
             <p className="text-sm text-muted-foreground mt-1 mb-5">Create your first tournament to get started.</p>
-            <Button asChild className="bg-primary hover:bg-primary/90">
-              <Link href="/dashboard/tournaments/new"><Plus className="h-4 w-4 mr-2" /> Create Tournament</Link>
-            </Button>
+            {canManage && (
+              <Button asChild className="bg-primary hover:bg-primary/90">
+                <Link href="/dashboard/tournaments/new">
+                  <Plus className="h-4 w-4 mr-2" />
+                  Create Tournament
+                </Link>
+              </Button>
+         )}
           </CardContent>
         </Card>
       ) : (

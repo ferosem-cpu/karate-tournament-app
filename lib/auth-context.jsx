@@ -26,7 +26,7 @@ async function ensureUserDoc(user, extra = {}) {
       email: user.email,
       displayName: user.displayName || extra.displayName || (user.email ? user.email.split('@')[0] : 'User'),
       photoURL: user.photoURL || null,
-      role: isSuperAdmin ? 'super_admin' : (extra.role || 'tournament_organizer'),
+      role: isSuperAdmin ? 'super_admin' : (extra.role || 'spectator'),
       createdAt: serverTimestamp(),
       updatedAt: serverTimestamp(),
     });
@@ -74,7 +74,7 @@ export function AuthProvider({ children }) {
     return res.user;
   };
 
-  const signUpEmail = async (email, password, displayName, role = 'tournament_organizer') => {
+  const signUpEmail = async (email, password, displayName, role = 'spectator') => {
     const res = await createUserWithEmailAndPassword(auth, email, password);
     if (displayName) {
       await updateProfile(res.user, { displayName });
