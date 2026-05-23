@@ -91,6 +91,16 @@ export default function TournamentForm({ initial, id }) {
   const handleSubmit = async (e) => {
     e.preventDefault();
     if (!form.name.trim()) return toast.error('Tournament name is required');
+    if (
+  form.startDate &&
+  form.endDate &&
+  new Date(form.endDate) < new Date(form.startDate)
+) {
+  return toast.error(
+    'Tournament end date cannot be before the start date'
+  );
+}
+
     setBusy(true);
     try {
       const payload = {

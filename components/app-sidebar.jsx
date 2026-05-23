@@ -7,6 +7,7 @@ import {
   LayoutDashboard,
   Trophy,
   Users,
+  ShieldCheck,
   Building2,
   Tags,
   Grid3x3,
@@ -33,6 +34,11 @@ const NAV = [
   { href: '/dashboard/media', label: 'Media', icon: HardDrive },
   { href: '/dashboard/notifications', label: 'Notifications', icon: Bell },
   { href: '/dashboard/settings', label: 'Settings', icon: Settings },
+  {
+  href: '/dashboard/users',
+  label: 'Users',
+  icon: ShieldCheck
+},
 ];
 
 export default function AppSidebar() {
@@ -57,7 +63,18 @@ export default function AppSidebar() {
       </div>
 
       <nav className="flex-1 px-3 py-4 space-y-1 overflow-y-auto">
-        {NAV.map((item) => {
+ {NAV
+  .filter((item) => {
+    if (
+      item.href === '/dashboard/users' &&
+      profile?.role !== 'super_admin'
+    ) {
+      return false;
+    }
+
+    return true;
+  })
+  .map((item) => {
           const Icon = item.icon;
           const active = pathname === item.href || (item.href !== '/dashboard' && pathname.startsWith(item.href));
           return (
