@@ -13,7 +13,7 @@ import { toast } from 'sonner';
 import { Loader2 } from 'lucide-react';
 
 export default function RegistrationDialog({ open, onOpenChange, tournament }) {
-  const { user } = useAuth();
+  const { user, profile } = useAuth();
   const [athletes, setAthletes] = useState([]);
   const [categories, setCategories] = useState([]);
   const [busy, setBusy] = useState(false);
@@ -100,9 +100,13 @@ export default function RegistrationDialog({ open, onOpenChange, tournament }) {
           </div>
           <DialogFooter>
             <Button type="button" variant="outline" onClick={() => onOpenChange(false)}>Cancel</Button>
-            <Button type="submit" disabled={busy} className="bg-primary hover:bg-primary/90 min-w-[140px]">
-              {busy ? <Loader2 className="h-4 w-4 animate-spin" /> : 'Add Registration'}
-            </Button>
+            {profile?.role === 'spectator' ? (
+              <div className="text-xs text-muted-foreground italic">Registration feature disabled for Spectator access.</div>
+            ) : (
+              <Button type="submit" disabled={busy} className="bg-primary hover:bg-primary/90 min-w-[140px]">
+                {busy ? <Loader2 className="h-4 w-4 animate-spin" /> : 'Add Registration'}
+              </Button>
+            )}
           </DialogFooter>
         </form>
       </DialogContent>

@@ -1,107 +1,56 @@
 'use client';
 
 import { useEffect, useState } from 'react';
-import Link from 'next/link';
-import { collection, deleteDoc, doc, onSnapshot, orderBy, query } from 'firebase/firestore';
-import { db } from '@/lib/firebase';
-import { Button } from '@/components/ui/button';
-import { Card, CardContent } from '@/components/ui/card';
-import { Input } from '@/components/ui/input';
-import { Badge } from '@/components/ui/badge';
 import PageHeader from '@/components/page-header';
-import { Plus, Building2, Search, MapPin, Phone, Mail, Globe, Trash2, Pencil, Eye, EyeOff } from 'lucide-react';
-import { toast } from 'sonner';
+import TournamentForm from '@/components/tournament-form';
+import { useAuth } from '@/lib/auth-context';
+import { Alert, AlertDescription } from '@/components/ui/alert';
+import { AlertCircle } from 'lucide-react';
+import { isAdminOrOrganizer } from '@/lib/constants';
 
-export default function DojosPage() {
-  const [dojos, setDojos] = useState([]);
-  const [loading, setLoading] = useState(true);
-  const [search, setSearch] = useState('');
+export default function CreateTournamentPage() {
+  const { profile, loading } = useAuth();
+  const [authorized, setAuthorized] = useState(false);
 
   useEffect(() => {
-    const q = query(collection(db, 'dojos'), orderBy('createdAt', 'desc'));
-    const unsub = onSnapshot(q, (s) => {
-      setDojos(s.docs.map((d) => ({ id: d.id, ...d.data() })));
-      setLoading(false);
-    }, () => setLoading(false));
-    return () => unsub();
-  }, []);
+    if (loading) return;
+    
+    // Check if user is authorized to create tournaments
+    if (!isAdminOrOrganizer(profile?.role)) {
+      setAuthorized(false);
+    } else {
+      setAuthorized(true);
+    }
+  }, [profile, loading]);
 
-  const filtered = dojos.filter((d) => [d.name, d.city, d.instructorName].join(' ').toLowerCase().includes(search.toLowerCase()));
+  if (loading) {
+    return <div className="flex items-center justify-center p-8 text-muted-foreground">Loading…</div>;
+  }
 
-  const remove = async (id, name) => {
-    if (!confirm(`Delete dojo "${name}"?`)) return;
-    try { await deleteDoc(doc(db, 'dojos', id)); toast.success('Dojo deleted'); }
-    catch (e) { toast.error(e.message); }
-  };
+  if (!authorized) {
+    return (
+      <>
+        <PageHeader
+          title="Create Tournament"
+          description="Set up a new tournament with details, dates, venue information, and media assets."
+        />
+        <Alert variant="destructive">
+          <AlertCircle className="h-4 w-4" />
+          <AlertDescription>
+            Only approved Tournament Organizers may create or modify tournaments.
+          </AlertDescription>
+        </Alert>
+      </>
+    );
+  }
 
   return (
     <>
       <PageHeader
-        title="Dojos"
-        description="Manage dojo profiles, instructors, contacts and public visibility."
-        actions={
-          <Button asChild className="bg-primary hover:bg-primary/90">
-            <Link href="/dashboard/dojos/new"><Plus className="h-4 w-4 mr-2" /> New Dojo</Link>
-          </Button>
-        }
+        title="Create Tournament"
+        description="Set up a new tournament with details, dates, venue information, and media assets."
       />
-
-      <div className="mb-5 relative max-w-md">
-        <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-        <Input className="pl-9" placeholder="Search dojos…" value={search} onChange={(e) => setSearch(e.target.value)} />
-      </div>
-
-      {loading ? (
-        <Card className="border-border/60"><CardContent className="p-10 text-center text-sm text-muted-foreground">Loading…</CardContent></Card>
-      ) : filtered.length === 0 ? (
-        <Card className="border-border/60"><CardContent className="p-16 text-center">
-          <Building2 className="h-12 w-12 mx-auto text-primary mb-3" />
-          <h3 className="font-semibold text-lg">No dojos yet</h3>
-          <p className="text-sm text-muted-foreground mt-1 mb-5">Create your first dojo to start registering kohai.</p>
-          <Button asChild className="bg-primary hover:bg-primary/90">
-            <Link href="/dashboard/dojos/new"><Plus className="h-4 w-4 mr-2" /> Create Dojo</Link>
-          </Button>
-        </CardContent></Card>
-      ) : (
-        <div className="grid sm:grid-cols-2 lg:grid-cols-3 gap-5">
-          {filtered.map((d) => (
-            <Card key={d.id} className="border-border/60 bg-card hover:border-primary/40 transition group overflow-hidden">
-              <CardContent className="p-5">
-                <div className="flex items-start gap-3">
-                  {d.logoUrl ? (
-                    <img src={d.logoUrl} alt="" className="h-14 w-14 rounded-md object-cover ring-1 ring-border" />
-                  ) : (
-                    <div className="h-14 w-14 rounded-md gradient-red-gold flex items-center justify-center">
-                      <Building2 className="h-7 w-7 text-white" />
-                    </div>
-                  )}
-                  <div className="flex-1 min-w-0">
-                    <h3 className="font-semibold truncate group-hover:text-primary transition">{d.name}</h3>
-                    <p className="text-xs text-muted-foreground truncate">Sensei {d.instructorName || '—'}</p>
-                    <div className="mt-1">
-                      {d.isPublic ? (
-                        <Badge variant="outline" className="text-[10px] bg-emerald-600/10 text-emerald-300 border-emerald-500/40"><Eye className="h-3 w-3 mr-1" />Public</Badge>
-                      ) : (
-                        <Badge variant="outline" className="text-[10px] bg-zinc-700 text-zinc-200 border-zinc-600"><EyeOff className="h-3 w-3 mr-1" />Private</Badge>
-                      )}
-                    </div>
-                  </div>
-                </div>
-                <div className="mt-4 space-y-1.5 text-xs text-muted-foreground">
-                  {(d.city || d.country) && <div className="flex items-center gap-1.5"><MapPin className="h-3 w-3" /> {[d.city, d.state, d.country].filter(Boolean).join(', ')}</div>}
-                  {d.phone && <div className="flex items-center gap-1.5"><Phone className="h-3 w-3" /> {d.phone}</div>}
-                  {d.email && <div className="flex items-center gap-1.5"><Mail className="h-3 w-3" /> {d.email}</div>}
-                  {d.website && <div className="flex items-center gap-1.5 truncate"><Globe className="h-3 w-3" /> {d.website}</div>}
-                </div>
-                <div className="flex gap-2 mt-4">
-                  <Button asChild size="sm" variant="outline" className="flex-1"><Link href={`/dashboard/dojos/${d.id}`}><Pencil className="h-3.5 w-3.5 mr-1" /> Edit</Link></Button>
-                  <Button size="sm" variant="ghost" onClick={() => remove(d.id, d.name)}><Trash2 className="h-3.5 w-3.5 text-destructive" /></Button>
-                </div>
-              </CardContent>
-            </Card>
-          ))}
-        </div>
-      )}
+      <TournamentForm />
     </>
   );
 }

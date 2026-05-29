@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from 'react';
 import Link from 'next/link';
-import { collection, query, where, orderBy, onSnapshot, limit } from 'firebase/firestore';
+import { collection, query, orderBy, onSnapshot, limit } from 'firebase/firestore';
 import { db } from '@/lib/firebase';
 import { useAuth } from '@/lib/auth-context';
 import { Card, CardContent } from '@/components/ui/card';
@@ -19,14 +19,24 @@ export default function DashboardPage() {
 
   useEffect(() => {
     if (!user) return;
+    
+    // Fetch recent 6 tournaments
     const q = query(collection(db, 'tournaments'), orderBy('createdAt', 'desc'), limit(6));
     const unsub = onSnapshot(q, (snap) => {
       setTournaments(snap.docs.map((d) => ({ id: d.id, ...d.data() })));
     });
+
+    // Real-time counter streams
     const unsubD = onSnapshot(collection(db, 'dojos'), (s) => setCounts((c) => ({ ...c, dojos: s.size })));
     const unsubA = onSnapshot(collection(db, 'athletes'), (s) => setCounts((c) => ({ ...c, athletes: s.size })));
     const unsubT = onSnapshot(collection(db, 'tatamis'), (s) => setCounts((c) => ({ ...c, tatamis: s.size })));
-    return () => { unsub(); unsubD(); unsubA(); unsubT(); };
+
+    return () => { 
+      unsub(); 
+      unsubD(); 
+      unsubA(); 
+      unsubT(); 
+    };
   }, [user]);
 
   const upcoming = tournaments.filter((t) => t.status === 'registration_open' || t.status === 'draft').length;
@@ -38,28 +48,38 @@ export default function DashboardPage() {
         title={`Welcome back, ${(profile?.displayName || 'Sensei').split(' ')[0]}`}
         description="Here's what's happening across your tournaments today."
         actions={
-          <Button asChild className="bg-primary hover:bg-primary/90">
-            <Link href="/dashboard/tournaments/new"><Plus className="h-4 w-4 mr-2" /> New Tournament</Link>
+          // 1. Top-Right Header Action Button - points to tournament creation
+          <Button asChild className="bg-zinc-100 hover:bg-zinc-200 text-zinc-950 font-bold px-4 py-2">
+            <Link href="/dashboard/tournaments/new">
+              <Plus className="h-4 w-4 mr-2" /> 
+              <span>New Tournament</span>
+            </Link>
           </Button>
         }
       />
 
-      <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-8">
-        <StatCard icon={Trophy} label="Upcoming Tournaments" value={upcoming} accent="text-gold" />
-        <StatCard icon={Activity} label="Live Now" value={live} accent="text-primary" pulse={live > 0} />
+      {/* Stats KPI Overview Blocks */}
+      <div className="grid grid-cols-2 md:grid-cols-4 gap-5 mb-10">
+        <StatCard icon={Trophy} label="Upcoming Tournaments" value={upcoming} />
+        <StatCard icon={Activity} label="Live Now" value={live} pulse={live > 0} />
         <StatCard icon={Users} label="Total Kohai" value={counts.athletes} />
         <StatCard icon={Building2} label="Registered Dojos" value={counts.dojos} />
       </div>
 
       <div className="grid lg:grid-cols-3 gap-6">
-        <Card className="lg:col-span-2 border-border/60 bg-card">
+        {/* Recent Tournaments Listing */}
+        <Card className="lg:col-span-2 border-zinc-800 bg-zinc-950 shadow-lg">
           <CardContent className="p-6">
-            <div className="flex items-center justify-between mb-5">
-              <h2 className="text-lg font-semibold">Recent Tournaments</h2>
-              <Button asChild variant="ghost" size="sm">
-                <Link href="/dashboard/tournaments">View all <ArrowRight className="h-3.5 w-3.5 ml-1" /></Link>
+            <div className="flex items-center justify-between mb-6 border-b border-zinc-900 pb-4">
+              <h2 className="text-xl font-bold text-zinc-50">Recent Tournaments</h2>
+              <Button asChild variant="ghost" size="sm" className="text-zinc-400 hover:text-white hover:bg-zinc-900">
+                <Link href="/dashboard/tournaments" className="flex items-center gap-1">
+                  <span>View all</span>
+                  <ArrowRight className="h-4 w-4" />
+                </Link>
               </Button>
             </div>
+
             {tournaments.length === 0 ? (
               <EmptyState />
             ) : (
@@ -68,22 +88,27 @@ export default function DashboardPage() {
                   <Link
                     key={t.id}
                     href={`/dashboard/tournaments/${t.id}`}
-                    className="flex items-center gap-4 p-3 rounded-lg border border-border/60 bg-secondary/30 hover:bg-secondary/60 transition group"
+                    className="flex items-center gap-4 p-4 rounded-xl border border-zinc-850 bg-zinc-900/40 hover:bg-zinc-900 hover:border-zinc-700 transition-all group"
                   >
                     {t.logoUrl ? (
-                      <img src={t.logoUrl} alt="" className="h-12 w-12 rounded-md object-cover ring-1 ring-border" />
+                      <img src={t.logoUrl} alt="" className="h-12 w-12 rounded-lg object-cover ring-1 ring-zinc-800" />
                     ) : (
-                      <div className="h-12 w-12 rounded-md gradient-red-gold flex items-center justify-center">
-                        <Trophy className="h-6 w-6 text-white" />
+                      <div className="h-12 w-12 rounded-lg bg-zinc-800 flex items-center justify-center">
+                        <Trophy className="h-6 w-6 text-zinc-400" />
                       </div>
                     )}
                     <div className="flex-1 min-w-0">
-                      <div className="font-semibold truncate group-hover:text-primary transition">{t.name}</div>
-                      <div className="text-xs text-muted-foreground flex items-center gap-2 mt-0.5">
-                        <CalendarDays className="h-3 w-3" /> {formatDate(t.startDate)} → {formatDate(t.endDate)} · {t.city || '—'}
+                      <div className="font-bold truncate text-zinc-100 group-hover:text-white transition text-base">
+                        {t.name}
+                      </div>
+                      <div className="text-xs text-zinc-400 flex items-center gap-1.5 mt-1">
+                        <CalendarDays className="h-3.5 w-3.5" /> 
+                        <span>{formatDate(t.startDate)} → {formatDate(t.endDate)} · {t.city || '—'}</span>
                       </div>
                     </div>
-                    <Badge variant="outline" className={statusColor(t.status)}>{statusLabel(t.status)}</Badge>
+                    <Badge variant="outline" className={`capitalize text-xs ${statusColor(t.status)}`}>
+                      {statusLabel(t.status)}
+                    </Badge>
                   </Link>
                 ))}
               </div>
@@ -91,13 +116,14 @@ export default function DashboardPage() {
           </CardContent>
         </Card>
 
-        <Card className="border-border/60 bg-card">
+        {/* Quick Action List Card */}
+        <Card className="border-zinc-800 bg-zinc-950 shadow-lg">
           <CardContent className="p-6">
-            <h2 className="text-lg font-semibold mb-4">Quick Actions</h2>
-            <div className="space-y-2">
+            <h2 className="text-xl font-bold text-zinc-50 mb-6 border-b border-zinc-900 pb-4">Quick Actions</h2>
+            <div className="space-y-1.5">
+              {/* 3. Quick Actions Selection - points directly to tournament creation */}
               <QuickLink href="/dashboard/tournaments/new" icon={Trophy} label="Create Tournament" />
-              <QuickLink href="/dashboard/kohai/new" icon={Users} label="Register Kohai" />
-              <QuickLink href="/dashboard/kohai/bulk-upload" icon={Users} label="Bulk Upload Kohai" />
+              <QuickLink href="/dashboard/kohai" icon={Users} label="Register Kohai" />
               <QuickLink href="/dashboard/dojos" icon={Building2} label="Manage Dojos" />
               <QuickLink href="/dashboard/tatamis" icon={Grid3x3} label="Configure Tatamis" />
             </div>
@@ -108,17 +134,21 @@ export default function DashboardPage() {
   );
 }
 
-function StatCard({ icon: Icon, label, value, accent, pulse }) {
+/* ==========================================================================
+   SUPPORTING COMPONENTS
+   ========================================================================== */
+
+function StatCard({ icon: Icon, label, value, pulse }) {
   return (
-    <Card className="border-border/60 bg-card overflow-hidden relative">
+    <Card className="border-zinc-850 bg-zinc-950 hover:border-zinc-800 transition-all shadow-md overflow-hidden">
       <CardContent className="p-5">
         <div className="flex items-start justify-between">
-          <div>
-            <div className="text-xs uppercase tracking-wider text-muted-foreground">{label}</div>
-            <div className={`text-3xl font-bold mt-2 ${accent || ''}`}>{value}</div>
+          <div className="min-w-0">
+            <div className="text-[10px] uppercase tracking-wider font-extrabold text-zinc-500">{label}</div>
+            <div className="text-3xl font-black text-zinc-100 mt-2 truncate">{value}</div>
           </div>
-          <div className={`h-10 w-10 rounded-lg bg-primary/10 flex items-center justify-center ${pulse ? 'animate-pulse' : ''}`}>
-            <Icon className="h-5 w-5 text-primary" />
+          <div className={`h-10 w-10 rounded-lg bg-zinc-900 flex items-center justify-center ${pulse ? 'animate-pulse' : ''}`}>
+            <Icon className="h-5 w-5 text-zinc-300" />
           </div>
         </div>
       </CardContent>
@@ -128,23 +158,28 @@ function StatCard({ icon: Icon, label, value, accent, pulse }) {
 
 function QuickLink({ href, icon: Icon, label }) {
   return (
-    <Link href={href} className="flex items-center gap-3 px-3 py-2.5 rounded-md hover:bg-secondary/60 transition text-sm">
-      <Icon className="h-4 w-4 text-primary" />
+    <Link href={href} className="flex items-center gap-3 px-3 py-2.5 rounded-lg hover:bg-zinc-900 text-zinc-400 hover:text-white transition-all text-sm font-semibold group">
+      <Icon className="h-4.5 w-4.5 text-zinc-400 group-hover:text-white" />
       <span>{label}</span>
-      <ArrowRight className="h-3.5 w-3.5 ml-auto opacity-50" />
+      <ArrowRight className="h-3.5 w-3.5 ml-auto opacity-30 group-hover:opacity-100 transition-all" />
     </Link>
   );
 }
 
 function EmptyState() {
   return (
-    <div className="py-12 text-center">
-      <div className="mx-auto h-14 w-14 rounded-full bg-primary/10 flex items-center justify-center mb-3">
-        <Trophy className="h-7 w-7 text-primary" />
+    <div className="py-12 text-center border border-dashed border-zinc-800 rounded-xl bg-zinc-900/20">
+      <div className="mx-auto h-12 w-12 rounded-full bg-zinc-800 flex items-center justify-center mb-4">
+        <Trophy className="h-6 w-6 text-zinc-400" />
       </div>
-      <p className="text-sm text-muted-foreground mb-4">No tournaments yet — let's create your first one.</p>
-      <Button asChild className="bg-primary hover:bg-primary/90">
-        <Link href="/dashboard/tournaments/new"><Plus className="h-4 w-4 mr-2" /> Create Tournament</Link>
+      <p className="text-sm text-zinc-400 mb-5 font-semibold">No tournaments yet — let's create your first one.</p>
+      
+      {/* 2. Empty State Button - points directly to tournament creation */}
+      <Button asChild className="bg-zinc-100 hover:bg-zinc-200 text-zinc-950 font-bold px-4 py-2 text-xs">
+        <Link href="/dashboard/tournaments/new">
+          <Plus className="h-4 w-4 mr-2" /> 
+          <span>Create Tournament</span>
+        </Link>
       </Button>
     </div>
   );

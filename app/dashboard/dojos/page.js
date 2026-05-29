@@ -1,5 +1,6 @@
 'use client';
-
+import { useAuth } from '@/lib/auth-context';
+import { where } from 'firebase/firestore';
 import { useEffect, useState } from 'react';
 import Link from 'next/link';
 import { collection, deleteDoc, doc, onSnapshot, orderBy, query } from 'firebase/firestore';
@@ -16,9 +17,27 @@ export default function DojosPage() {
   const [dojos, setDojos] = useState([]);
   const [loading, setLoading] = useState(true);
   const [search, setSearch] = useState('');
+  const { user, profile } = useAuth();
+  const canManageDojo =
+  profile?.role === 'super_admin' ||
+  profile?.role === 'dojo_admin' ||
+  profile?.role === 'coach' ||
+  profile?.role === 'tournament_organizer';
 
   useEffect(() => {
-    const q = query(collection(db, 'dojos'), orderBy('createdAt', 'desc'));
+    let q;
+
+if (profile?.role === 'super_admin') {
+  q = query(
+    collection(db, 'dojos'),
+    orderBy('createdAt', 'desc')
+  );
+} else {
+  q = query(
+    collection(db, 'dojos'),
+    where('ownerId', '==', user?.uid)
+  );
+}
     const unsub = onSnapshot(q, (s) => {
       setDojos(s.docs.map((d) => ({ id: d.id, ...d.data() })));
       setLoading(false);
@@ -87,16 +106,24 @@ export default function DojosPage() {
                     </div>
                   </div>
                 </div>
-                <div className="mt-4 space-y-1.5 text-xs text-muted-foreground">
-                  {(d.city || d.country) && <div className="flex items-center gap-1.5"><MapPin className="h-3 w-3" /> {[d.city, d.state, d.country].filter(Boolean).join(', ')}</div>}
-                  {d.phone && <div className="flex items-center gap-1.5"><Phone className="h-3 w-3" /> {d.phone}</div>}
-                  {d.email && <div className="flex items-center gap-1.5"><Mail className="h-3 w-3" /> {d.email}</div>}
-                  {d.website && <div className="flex items-center gap-1.5 truncate"><Globe className="h-3 w-3" /> {d.website}</div>}
-                </div>
-                <div className="flex gap-2 mt-4">
-                  <Button asChild size="sm" variant="outline" className="flex-1"><Link href={`/dashboard/dojos/${d.id}`}><Pencil className="h-3.5 w-3.5 mr-1" /> Edit</Link></Button>
-                  <Button size="sm" variant="ghost" onClick={() => remove(d.id, d.name)}><Trash2 className="h-3.5 w-3.5 text-destructive" /></Button>
-                </div>
+                {canManageDojo && (
+  <div className="flex gap-2 mt-4">
+    <Button asChild size="sm" variant="outline" className="flex-1">
+      <Link href={`/dashboard/dojos/${d.id}`}>
+        <Pencil className="h-3.5 w-3.5 mr-1" />
+        Edit
+      </Link>
+    </Button>
+
+    <Button
+      size="sm"
+      variant="ghost"
+      onClick={() => remove(d.id, d.name)}
+    >
+      <Trash2 className="h-3.5 w-3.5 text-destructive" />
+    </Button>
+  </div>
+)}
               </CardContent>
             </Card>
           ))}

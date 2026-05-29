@@ -2,7 +2,7 @@
 
 import Link from 'next/link';
 import { useEffect, useState } from 'react';
-import { collection, deleteDoc, doc, onSnapshot, orderBy, query } from 'firebase/firestore';
+import { collection, deleteDoc, doc, onSnapshot, orderBy, query, where } from 'firebase/firestore';
 import { db } from '@/lib/firebase';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent } from '@/components/ui/card';
@@ -15,20 +15,50 @@ import { Plus, Upload, Users, Search, Pencil, Trash2 } from 'lucide-react';
 import { beltClass } from '@/lib/constants';
 import { toast } from 'sonner';
 import { formatDate } from '@/lib/utils';
+import { useAuth } from '@/lib/auth-context';
 
 export default function KohaiPage() {
   const [athletes, setAthletes] = useState([]);
   const [loading, setLoading] = useState(true);
   const [search, setSearch] = useState('');
+  const { profile, user } = useAuth();
+
+  const canManageKohai =
+    profile?.role === 'super_admin' ||
+    profile?.role === 'dojo_admin' ||
+    profile?.role === 'coach' ||
+    profile?.role === 'tournament_organizer';
 
   useEffect(() => {
-    const q = query(collection(db, 'athletes'), orderBy('createdAt', 'desc'));
+    if (!user) return;
+
+    // Build query based on user role
+    let q;
+    if (profile?.role === 'super_admin') {
+      // Super admin sees all athletes
+      q = query(collection(db, 'athletes'), orderBy('createdAt', 'desc'));
+    } else if (profile?.role === 'dojo_admin' || profile?.role === 'tournament_organizer') {
+      // Dojo admin and tournament organizer see only their own athletes
+      q = query(
+        collection(db, 'athletes'),
+        where('ownerId', '==', user.uid),
+        orderBy('createdAt', 'desc')
+      );
+    } else {
+      // Other roles (coach, spectator, etc.) see no athletes or handle as needed
+      q = query(
+        collection(db, 'athletes'),
+        where('ownerId', '==', user.uid),
+        orderBy('createdAt', 'desc')
+      );
+    }
+
     const unsub = onSnapshot(q, (s) => {
       setAthletes(s.docs.map((d) => ({ id: d.id, ...d.data() })));
       setLoading(false);
     }, () => setLoading(false));
     return () => unsub();
-  }, []);
+  }, [user, profile]);
 
   const filtered = athletes.filter((a) => [a.fullName, a.dojoName, a.belt].join(' ').toLowerCase().includes(search.toLowerCase()));
 
@@ -44,11 +74,24 @@ export default function KohaiPage() {
         title="Kohai"
         description={`${athletes.length} registered athletes · frontend term: Kohai · backend collection: athletes`}
         actions={
-          <>
-            <Button asChild variant="outline"><Link href="/dashboard/kohai/bulk-upload"><Upload className="h-4 w-4 mr-2" /> Bulk Upload</Link></Button>
-            <Button asChild className="bg-primary hover:bg-primary/90"><Link href="/dashboard/kohai/new"><Plus className="h-4 w-4 mr-2" /> Register Kohai</Link></Button>
-          </>
-        }
+  canManageKohai && profile?.role !== 'spectator' && (
+    <>
+      <Button asChild variant="outline">
+        <Link href="/dashboard/kohai/bulk-upload">
+          <Upload className="h-4 w-4 mr-2" />
+          Bulk Upload
+        </Link>
+      </Button>
+
+      <Button asChild className="bg-primary hover:bg-primary/90">
+        <Link href="/dashboard/kohai/new">
+          <Plus className="h-4 w-4 mr-2" />
+          Register Kohai
+        </Link>
+      </Button>
+    </>
+  )
+}
       />
 
       <div className="mb-5 relative max-w-md">
@@ -81,7 +124,7 @@ export default function KohaiPage() {
                     <TableHead>Gender</TableHead>
                     <TableHead>DOB</TableHead>
                     <TableHead>Weight</TableHead>
-                    <TableHead className="text-right">Actions</TableHead>
+                    {profile?.role !== 'spectator' && <TableHead className="text-right">Actions</TableHead>}
                   </TableRow>
                 </TableHeader>
                 <TableBody>
@@ -102,8 +145,12 @@ export default function KohaiPage() {
                       <TableCell className="text-muted-foreground">{formatDate(a.dateOfBirth)}</TableCell>
                       <TableCell className="text-muted-foreground">{a.weight ? `${a.weight} kg` : '—'}</TableCell>
                       <TableCell className="text-right">
-                        <Button asChild size="sm" variant="ghost"><Link href={`/dashboard/kohai/${a.id}`}><Pencil className="h-3.5 w-3.5" /></Link></Button>
-                        <Button size="sm" variant="ghost" onClick={() => remove(a.id, a.fullName)}><Trash2 className="h-3.5 w-3.5 text-destructive" /></Button>
+                        {profile?.role !== 'spectator' && (
+                          <>
+                            <Button asChild size="sm" variant="ghost"><Link href={`/dashboard/kohai/${a.id}`}><Pencil className="h-3.5 w-3.5" /></Link></Button>
+                            <Button size="sm" variant="ghost" onClick={() => remove(a.id, a.fullName)}><Trash2 className="h-3.5 w-3.5 text-destructive" /></Button>
+                          </>
+                        )}
                       </TableCell>
                     </TableRow>
                   ))}

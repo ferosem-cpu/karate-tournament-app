@@ -67,7 +67,10 @@ module.exports = {
     				'accent-foreground': 'hsl(var(--sidebar-accent-foreground))',
     				border: 'hsl(var(--sidebar-border))',
     				ring: 'hsl(var(--sidebar-ring))'
-    			}
+    			},
+    			platinum: '#f4f4f6',
+    			'gold-primary': '#d4af37',
+    			'bronze-accent': '#8b6914'
     		},
     		borderRadius: {
     			lg: 'var(--radius)',

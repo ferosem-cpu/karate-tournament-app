@@ -14,6 +14,8 @@ import { Card, CardContent } from '@/components/ui/card';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Progress } from '@/components/ui/progress';
 import RetentionSelect from '@/components/retention-select';
+import permissions from '@/lib/permissions';
+import { isAdminOrOrganizer } from '@/lib/constants';
 import { toast } from 'sonner';
 import { Loader2, Upload, FileText, Image as ImageIcon, X } from 'lucide-react';
 
@@ -26,7 +28,7 @@ const STATUSES = [
 
 export default function TournamentForm({ initial, id }) {
   const router = useRouter();
-  const { user } = useAuth();
+  const { user, profile } = useAuth();
   const [busy, setBusy] = useState(false);
   const [form, setForm] = useState({
     name: initial?.name || '',
@@ -90,6 +92,21 @@ export default function TournamentForm({ initial, id }) {
 
   const handleSubmit = async (e) => {
     e.preventDefault();
+    
+    // Authorization check
+    if (!isAdminOrOrganizer(profile?.role)) {
+      toast.error('Only approved Tournament Organizers may create or modify tournaments.');
+      return;
+    }
+    
+    // For edit: verify ownership
+    if (id && initial) {
+      if (!permissions.canEditTournament(user?.uid, profile?.role, initial)) {
+        toast.error('You can only edit tournaments you created.');
+        return;
+      }
+    }
+    
     if (!form.name.trim()) return toast.error('Tournament name is required');
     if (
   form.startDate &&

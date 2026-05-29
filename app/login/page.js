@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import React, { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import { useAuth } from '@/lib/auth-context';
 import { Button } from '@/components/ui/button';
@@ -9,7 +9,7 @@ import { Label } from '@/components/ui/label';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Card, CardContent } from '@/components/ui/card';
 import { toast } from 'sonner';
-import { Loader2, Trophy, Swords } from 'lucide-react';
+import { Loader2, Trophy, Mail, UserPlus, ShieldAlert } from 'lucide-react';
 
 export default function LoginPage() {
   const { user, loading, signInEmail, signUpEmail, signInGoogle } = useAuth();
@@ -65,119 +65,198 @@ export default function LoginPage() {
   };
 
   return (
-    <div className="min-h-screen grid lg:grid-cols-2 relative overflow-hidden">
-      {/* Background watermark logo (whole screen) */}
-      <img
-        src="https://customer-assets.emergentagent.com/job_kohai-platform/artifacts/kx7xfew2_platformlogo.png"
-        alt=""
-        aria-hidden
-        className="pointer-events-none select-none absolute -right-32 top-1/2 -translate-y-1/2 w-[900px] max-w-none opacity-[0.04] blur-sm"
-      />
-      <img
-        src="https://customer-assets.emergentagent.com/job_kohai-platform/artifacts/kx7xfew2_platformlogo.png"
-        alt=""
-        aria-hidden
-        className="pointer-events-none select-none absolute -left-48 -bottom-48 w-[600px] max-w-none opacity-[0.06] rotate-12"
-      />
+    <div className="min-h-screen grid lg:grid-cols-2 relative bg-zinc-950 text-zinc-100">
+      
+      {/* Left Panel - Clean Dark Brand Layout */}
+      <div className="hidden lg:flex relative z-10 bg-zinc-950 border-r border-zinc-900 justify-between p-12 flex-col w-full">
+        <div className="flex items-center gap-3">
+          <img
+            src="https://customer-assets.emergentagent.com/job_kohai-platform/artifacts/kx7xfew2_platformlogo.png"
+            alt="Logo"
+            className="h-12 w-12 rounded-lg object-cover ring-1 ring-zinc-800"
+          />
+          <div className="flex flex-col">
+            <span className="text-base font-bold tracking-tight text-white leading-none">
+              TOURNAMENT HUB
+            </span>
+            <span className="text-[9px] text-zinc-400 font-semibold tracking-wider uppercase mt-1">
+              GLOBAL COMPETITION PLATFORM
+            </span>
+          </div>
+        </div>
 
-      {/* Left brand panel */}
-      <div className="hidden lg:flex relative overflow-hidden bg-gradient-to-br from-black via-zinc-950 to-red-950">
-        <div className="absolute inset-0 bg-grid opacity-30" />
-        <div className="absolute -top-32 -left-32 w-96 h-96 rounded-full bg-primary/20 blur-3xl" />
-        <div className="absolute bottom-0 right-0 w-[28rem] h-[28rem] rounded-full bg-accent/10 blur-3xl" />
-        <div className="relative z-10 flex flex-col justify-between p-12 w-full">
-          <div className="flex items-center gap-4">
-            <img
-              src="https://customer-assets.emergentagent.com/job_kohai-platform/artifacts/kx7xfew2_platformlogo.png"
-              alt="Tournament Hub"
-              className="h-16 w-16 rounded-xl object-cover ring-1 ring-border/60 shadow-xl shadow-primary/40"
-            />
-            <div>
-              <div className="text-3xl font-extrabold tracking-tight leading-none">TOURNAMENT HUB</div>
-              <div className="text-sm text-muted-foreground mt-1.5">Global Competition Platform</div>
-            </div>
+        <div className="space-y-4">
+          <h1 className="text-4xl font-extrabold tracking-tight leading-tight text-white">
+            Run world-class tournaments.
+          </h1>
+          <p className="text-base text-zinc-400 max-w-sm leading-relaxed">
+            Manage registrations, dojo roster directories, competitors, categories, tatamis, and live bracket states in one integrated platform.
+          </p>
+          
+          <div className="flex gap-6 pt-4 border-t border-zinc-900">
+            <Stat label="Tournaments" value="Active" />
+            <Stat label="Dojos" value="Registered" />
+            <Stat label="Athletes" value="Verified" />
           </div>
-          <div className="space-y-6">
-            <h1 className="text-5xl font-extrabold leading-tight tracking-tight">
-              Run world-class <span className="text-gold">tournaments</span>.
-            </h1>
-            <p className="text-lg text-muted-foreground max-w-md">
-              From karate to global competitions — manage registrations, dojos, athletes, categories, tatamis and live brackets in one place.
-            </p>
-            <div className="flex gap-6 pt-4">
-              <Stat label="Tournaments" value="∞" />
-              <Stat label="Dojos" value="∞" />
-              <Stat label="Athletes" value="∞" />
-            </div>
-          </div>
-          <div className="text-xs text-muted-foreground">© 2025 Tournament Hub · Built for India, ready for the world.</div>
+        </div>
+
+        <div className="text-[10px] text-zinc-500 font-medium uppercase tracking-wider">
+          © 2026 Tournament Hub • Global Competition Platform
         </div>
       </div>
 
-      {/* Right form */}
-      <div className="flex items-center justify-center p-6 lg:p-12 relative z-10 lg:col-start-2">
-        <Card className="w-full max-w-md border-border/60 bg-card/70 backdrop-blur-md shadow-2xl">
+      {/* Right Panel - Sleek Minimal Floating Login Card */}
+      <div className="flex items-center justify-center p-6 lg:p-12 relative z-10 lg:col-start-2 bg-zinc-900">
+        <Card className="w-full max-w-md border border-zinc-800 bg-zinc-950 shadow-2xl rounded-xl overflow-hidden">
           <CardContent className="p-8">
-            <div className="flex lg:hidden items-center gap-3 mb-6">
+            
+            {/* Mobile Header View */}
+            <div className="flex lg:hidden items-center gap-3 mb-6 border-b border-zinc-900 pb-4">
               <img
                 src="https://customer-assets.emergentagent.com/job_kohai-platform/artifacts/kx7xfew2_platformlogo.png"
-                alt="Tournament Hub"
-                className="h-14 w-14 rounded-lg object-cover shadow-lg shadow-primary/30"
+                alt="Logo"
+                className="h-10 w-10 rounded-md object-cover"
               />
-              <div>
-                <div className="font-extrabold text-xl tracking-tight">TOURNAMENT HUB</div>
-                <div className="text-[10px] text-muted-foreground uppercase tracking-widest">Global Competition</div>
+              <div className="flex flex-col">
+                <span className="font-bold text-sm text-white tracking-tight leading-none">
+                  TOURNAMENT HUB
+                </span>
+                <span className="text-[8px] text-zinc-500 font-semibold uppercase tracking-wider mt-0.5">
+                  GLOBAL PLATFORM
+                </span>
               </div>
             </div>
-            <h2 className="text-2xl font-bold mb-1">Welcome</h2>
-            <p className="text-sm text-muted-foreground mb-6">Sign in to manage your tournaments.</p>
 
-            <Button variant="outline" className="w-full mb-5" onClick={handleGoogle} disabled={busy}>
-              <GoogleIcon /> Continue with Google
+            <h2 className="text-2xl font-extrabold text-zinc-50 tracking-tight mb-1">
+              Welcome
+            </h2>
+            <p className="text-xs text-zinc-400 mb-6 font-medium">
+              Access your workspace portal.
+            </p>
+
+            <Button 
+              variant="outline" 
+              className="w-full mb-5 border-zinc-800 bg-zinc-900 hover:bg-zinc-850 text-zinc-100 transition-all font-semibold" 
+              onClick={handleGoogle} 
+              disabled={busy}
+            >
+              <svg viewBox="0 0 24 24" className="h-4 w-4 mr-2" fill="currentColor">
+                <path d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z" />
+                <path d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z" />
+                <path d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.07H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.93l2.85-2.22.81-.62z" />
+                <path d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.07l3.66 2.84c.87-2.6 3.3-4.53 6.16-4.53z" />
+              </svg>
+              <span>Continue with Google</span>
             </Button>
-            <div className="relative my-4">
-              <div className="absolute inset-0 flex items-center"><span className="w-full border-t border-border" /></div>
+
+            <div className="relative my-5">
+              <div className="absolute inset-0 flex items-center">
+                <span className="w-full border-t border-zinc-800" />
+              </div>
               <div className="relative flex justify-center text-xs uppercase">
-                <span className="bg-card px-2 text-muted-foreground">or with email</span>
+                <span className="bg-zinc-950 px-3 text-zinc-500 font-semibold tracking-wider">or sign in with email</span>
               </div>
             </div>
 
             <Tabs defaultValue="signin" className="w-full">
-              <TabsList className="grid w-full grid-cols-2">
-                <TabsTrigger value="signin">Sign In</TabsTrigger>
-                <TabsTrigger value="signup">Create Account</TabsTrigger>
+              <TabsList className="grid w-full grid-cols-2 bg-zinc-900 p-1 rounded-lg">
+                <TabsTrigger 
+                  value="signin" 
+                  className="data-[state=active]:bg-zinc-800 data-[state=active]:text-white font-semibold text-xs"
+                >
+                  <Mail className="w-3.5 h-3.5 mr-1.5" />
+                  <span>Sign In</span>
+                </TabsTrigger>
+                <TabsTrigger 
+                  value="signup" 
+                  className="data-[state=active]:bg-zinc-800 data-[state=active]:text-white font-semibold text-xs"
+                >
+                  <UserPlus className="w-3.5 h-3.5 mr-1.5" />
+                  <span>Register</span>
+                </TabsTrigger>
               </TabsList>
+
               <TabsContent value="signin" className="mt-4">
-                <form onSubmit={handleEmailLogin} className="space-y-4">
-                  <div>
-                    <Label htmlFor="email">Email</Label>
-                    <Input id="email" type="email" value={email} onChange={(e) => setEmail(e.target.value)} required placeholder="you@dojo.com" />
+                <form onSubmit={handleEmailLogin} className="space-y-3.5">
+                  <div className="space-y-1">
+                    <Label htmlFor="email" className="font-semibold text-zinc-400 text-xs">Email Address</Label>
+                    <Input 
+                      id="email" 
+                      type="email" 
+                      value={email} 
+                      onChange={(e) => setEmail(e.target.value)} 
+                      required 
+                      placeholder="sensei@dojo.com" 
+                      className="border-zinc-800 focus:border-zinc-700 bg-zinc-950 text-white h-9 rounded-md outline-none" 
+                    />
                   </div>
-                  <div>
-                    <Label htmlFor="password">Password</Label>
-                    <Input id="password" type="password" value={password} onChange={(e) => setPassword(e.target.value)} required placeholder="••••••••" />
+                  <div className="space-y-1">
+                    <Label htmlFor="password" className="font-semibold text-zinc-400 text-xs">Password</Label>
+                    <Input 
+                      id="password" 
+                      type="password" 
+                      value={password} 
+                      onChange={(e) => setPassword(e.target.value)} 
+                      required 
+                      placeholder="••••••••" 
+                      className="border-zinc-800 focus:border-zinc-700 bg-zinc-950 text-white h-9 rounded-md outline-none" 
+                    />
                   </div>
-                  <Button type="submit" className="w-full bg-primary hover:bg-primary/90" disabled={busy}>
-                    {busy ? <Loader2 className="h-4 w-4 animate-spin" /> : 'Sign In'}
+                  <Button 
+                    type="submit" 
+                    className="w-full bg-zinc-100 hover:bg-zinc-200 text-zinc-950 font-bold text-xs py-5 rounded-md transition-colors mt-2" 
+                    disabled={busy}
+                  >
+                    {busy && <Loader2 className="h-4 w-4 animate-spin mr-1.5" />} 
+                    <span>Sign In</span>
                   </Button>
                 </form>
               </TabsContent>
+
               <TabsContent value="signup" className="mt-4">
-                <form onSubmit={handleEmailSignup} className="space-y-4">
-                  <div>
-                    <Label htmlFor="name">Full Name</Label>
-                    <Input id="name" value={name} onChange={(e) => setName(e.target.value)} required placeholder="Sensei Tanaka" />
+                <form onSubmit={handleEmailSignup} className="space-y-3.5">
+                  <div className="space-y-1">
+                    <Label htmlFor="name" className="font-semibold text-zinc-400 text-xs">Sensei / Full Name</Label>
+                    <Input 
+                      id="name" 
+                      value={name} 
+                      onChange={(e) => setName(e.target.value)} 
+                      required 
+                      placeholder="Sensei Tanaka" 
+                      className="border-zinc-800 focus:border-zinc-700 bg-zinc-950 text-white h-9 rounded-md outline-none" 
+                    />
                   </div>
-                  <div>
-                    <Label htmlFor="email2">Email</Label>
-                    <Input id="email2" type="email" value={email} onChange={(e) => setEmail(e.target.value)} required placeholder="you@dojo.com" />
+                  <div className="space-y-1">
+                    <Label htmlFor="email2" className="font-semibold text-zinc-400 text-xs">Email Address</Label>
+                    <Input 
+                      id="email2" 
+                      type="email" 
+                      value={email} 
+                      onChange={(e) => setEmail(e.target.value)} 
+                      required 
+                      placeholder="sensei@dojo.com" 
+                      className="border-zinc-800 focus:border-zinc-700 bg-zinc-950 text-white h-9 rounded-md outline-none" 
+                    />
                   </div>
-                  <div>
-                    <Label htmlFor="password2">Password</Label>
-                    <Input id="password2" type="password" value={password} onChange={(e) => setPassword(e.target.value)} required placeholder="Min 6 chars" />
+                  <div className="space-y-1">
+                    <Label htmlFor="password2" className="font-semibold text-zinc-400 text-xs">Secure Password</Label>
+                    <Input 
+                      id="password2" 
+                      type="password" 
+                      value={password} 
+                      onChange={(e) => setPassword(e.target.value)} 
+                      required 
+                      placeholder="Minimum 6 characters" 
+                      className="border-zinc-800 focus:border-zinc-700 bg-zinc-950 text-white h-9 rounded-md outline-none" 
+                    />
                   </div>
-                  <Button type="submit" className="w-full bg-primary hover:bg-primary/90" disabled={busy}>
-                    {busy ? <Loader2 className="h-4 w-4 animate-spin" /> : 'Create Account'}
+                  <Button 
+                    type="submit" 
+                    className="w-full bg-zinc-100 hover:bg-zinc-200 text-zinc-950 font-bold text-xs py-5 rounded-md transition-colors mt-2" 
+                    disabled={busy}
+                  >
+                    {busy && <Loader2 className="h-4 w-4 animate-spin mr-1.5" />} 
+                    <span>Register Account</span>
                   </Button>
                 </form>
               </TabsContent>
@@ -185,26 +264,16 @@ export default function LoginPage() {
           </CardContent>
         </Card>
       </div>
+
     </div>
   );
 }
 
 function Stat({ label, value }) {
   return (
-    <div>
-      <div className="text-3xl font-bold text-gold">{value}</div>
-      <div className="text-xs uppercase tracking-wider text-muted-foreground">{label}</div>
+    <div className="space-y-0.5">
+      <div className="text-lg font-bold text-white tracking-tight leading-none">{value}</div>
+      <div className="text-[9px] uppercase tracking-widest text-zinc-500 font-bold">{label}</div>
     </div>
-  );
-}
-
-function GoogleIcon() {
-  return (
-    <svg viewBox="0 0 24 24" className="h-4 w-4 mr-2">
-      <path fill="#FFC107" d="M43.6 20.5H42V20H24v8h11.3C33.7 32.3 29.3 35 24 35c-6.1 0-11-4.9-11-11s4.9-11 11-11c2.8 0 5.4 1 7.4 2.8l5.7-5.7C33.5 6.3 28.9 4 24 4 12.9 4 4 12.9 4 24s8.9 20 20 20c11 0 19.5-8 19.5-20 0-1.2-.1-2.4-.4-3.5z" />
-      <path fill="#FF3D00" d="M6.3 14.7l6.6 4.8C14.6 16 19 13 24 13c2.8 0 5.4 1 7.4 2.8l5.7-5.7C33.5 6.3 28.9 4 24 4 16.5 4 9.9 8.4 6.3 14.7z" />
-      <path fill="#4CAF50" d="M24 44c5.1 0 9.7-2 13.1-5.1l-6-5.1C29.2 35.3 26.7 36 24 36c-5.3 0-9.7-2.7-11.3-7l-6.5 5C9.7 39.6 16.3 44 24 44z" />
-      <path fill="#1976D2" d="M43.6 20.5H42V20H24v8h11.3c-.8 2.3-2.4 4.3-4.5 5.6l6 5.1C40.7 35.1 44 30 44 24c0-1.2-.1-2.4-.4-3.5z" />
-    </svg>
   );
 }

@@ -17,6 +17,7 @@ import { toast } from 'sonner';
 import { formatDate, statusColor, statusLabel } from '@/lib/utils';
 import { beltClass } from '@/lib/constants';
 import { useAuth } from '@/lib/auth-context';
+import permissions from '@/lib/permissions';
 export default function TournamentDetailPage() {
   const { id } = useParams();
   const { profile } = useAuth();
@@ -50,9 +51,8 @@ export default function TournamentDetailPage() {
 
   if (loading) return <div className="text-muted-foreground text-sm">Loading…</div>;
   if (!t) return <div className="text-muted-foreground text-sm">Tournament not found.</div>;
-const canEdit =
-  profile?.role === 'super_admin' ||
-  profile?.uid === t?.ownerId;
+  
+  const canEdit = permissions.canEditTournament(profile?.uid, profile?.role, t);
   return (
     <>
       <PageHeader
@@ -115,7 +115,7 @@ const canEdit =
               <h3 className="font-semibold">Registrations</h3>
               <p className="text-xs text-muted-foreground mt-0.5">{registrations.length} kohai registered to this tournament</p>
             </div>
-            <Button onClick={() => setRegOpen(true)} className="bg-primary hover:bg-primary/90"><Plus className="h-4 w-4 mr-2" /> Add Registration</Button>
+            {profile?.role !== 'spectator' && <Button onClick={() => setRegOpen(true)} className="bg-primary hover:bg-primary/90"><Plus className="h-4 w-4 mr-2" /> Add Registration</Button>}
           </div>
           {registrations.length === 0 ? (
             <div className="p-10 text-center text-sm text-muted-foreground">No registrations yet. Add the first kohai.</div>
@@ -128,7 +128,7 @@ const canEdit =
                   <TableHead>Belt</TableHead>
                   <TableHead>Category</TableHead>
                   <TableHead>Status</TableHead>
-                  <TableHead className="text-right">—</TableHead>
+                  {profile?.role !== 'spectator' && <TableHead className="text-right">—</TableHead>}
                 </TableRow></TableHeader>
                 <TableBody>
                   {registrations.map((r) => (
@@ -143,7 +143,7 @@ const canEdit =
                       <TableCell>{r.athleteBelt ? <Badge variant="outline" className={`${beltClass(r.athleteBelt)} text-[10px]`}>{r.athleteBelt}</Badge> : '—'}</TableCell>
                       <TableCell className="text-muted-foreground">{r.categoryName || '—'}</TableCell>
                       <TableCell><Badge variant="outline" className="bg-emerald-500/15 text-emerald-300 border-emerald-500/40 text-[10px]">{r.status || 'approved'}</Badge></TableCell>
-                      <TableCell className="text-right"><Button size="sm" variant="ghost" onClick={() => removeReg(r.id, r.athleteName)}><Trash2 className="h-3.5 w-3.5 text-destructive" /></Button></TableCell>
+                      {profile?.role !== 'spectator' && <TableCell className="text-right"><Button size="sm" variant="ghost" onClick={() => removeReg(r.id, r.athleteName)}><Trash2 className="h-3.5 w-3.5 text-destructive" /></Button></TableCell>}
                     </TableRow>
                   ))}
                 </TableBody>
