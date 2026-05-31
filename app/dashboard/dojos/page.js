@@ -10,7 +10,7 @@ import { Card, CardContent } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
 import { Badge } from '@/components/ui/badge';
 import PageHeader from '@/components/page-header';
-import { Plus, Building2, Search, MapPin, Phone, Mail, Globe, Trash2, Pencil, Eye, EyeOff } from 'lucide-react';
+import { Plus, Building2, Search, MapPin, Phone, Mail, Globe, Trash2, Pencil, Eye, EyeOff, Users, Trophy } from 'lucide-react';
 import { toast } from 'sonner';
 
 export default function DojosPage() {
@@ -59,9 +59,21 @@ if (profile?.role === 'super_admin') {
         title="Dojos"
         description="Manage dojo profiles, instructors, contacts and public visibility."
         actions={
-          <Button asChild className="bg-primary hover:bg-primary/90">
-            <Link href="/dashboard/dojos/new"><Plus className="h-4 w-4 mr-2" /> New Dojo</Link>
-          </Button>
+          <div className="flex items-center gap-3">
+            {profile?.role === 'dojo_admin' && (
+              <Button asChild className="bg-gradient-to-r from-amber-500 to-yellow-600 hover:from-amber-650 hover:to-yellow-750 text-zinc-950 font-bold border-none shadow-md">
+                <Link href="/dashboard/dojos/payment">
+                  <Trophy className="h-4 w-4 mr-2" />
+                  I want to conduct a tournament
+                </Link>
+              </Button>
+            )}
+            {canManageDojo && profile?.role !== 'spectator' && (
+              <Button asChild className="bg-primary hover:bg-primary/90">
+                <Link href="/dashboard/dojos/new"><Plus className="h-4 w-4 mr-2" /> New Dojo</Link>
+              </Button>
+            )}
+          </div>
         }
       />
 
@@ -77,9 +89,21 @@ if (profile?.role === 'super_admin') {
           <Building2 className="h-12 w-12 mx-auto text-primary mb-3" />
           <h3 className="font-semibold text-lg">No dojos yet</h3>
           <p className="text-sm text-muted-foreground mt-1 mb-5">Create your first dojo to start registering kohai.</p>
-          <Button asChild className="bg-primary hover:bg-primary/90">
-            <Link href="/dashboard/dojos/new"><Plus className="h-4 w-4 mr-2" /> Create Dojo</Link>
-          </Button>
+          <div className="flex gap-2 justify-center">
+            {profile?.role === 'dojo_admin' && (
+              <Button asChild className="bg-gradient-to-r from-amber-500 to-yellow-600 hover:from-amber-650 hover:to-yellow-750 text-zinc-950 font-bold border-none shadow-md">
+                <Link href="/dashboard/dojos/payment">
+                  <Trophy className="h-4 w-4 mr-2" />
+                  I want to conduct a tournament
+                </Link>
+              </Button>
+            )}
+            {canManageDojo && profile?.role !== 'spectator' && (
+              <Button asChild className="bg-primary hover:bg-primary/90">
+                <Link href="/dashboard/dojos/new"><Plus className="h-4 w-4 mr-2" /> Create Dojo</Link>
+              </Button>
+            )}
+          </div>
         </CardContent></Card>
       ) : (
         <div className="grid sm:grid-cols-2 lg:grid-cols-3 gap-5">
@@ -104,6 +128,7 @@ if (profile?.role === 'super_admin') {
                         <Badge variant="outline" className="text-[10px] bg-zinc-700 text-zinc-200 border-zinc-600"><EyeOff className="h-3 w-3 mr-1" />Private</Badge>
                       )}
                     </div>
+                    <DojoKohaiCount dojoId={d.id} />
                   </div>
                 </div>
                 {canManageDojo && (
@@ -130,5 +155,25 @@ if (profile?.role === 'super_admin') {
         </div>
       )}
     </>
+  );
+}
+
+function DojoKohaiCount({ dojoId }) {
+  const [count, setCount] = useState(0);
+
+  useEffect(() => {
+    if (!dojoId) return;
+    const q = query(collection(db, 'athletes'), where('dojoId', '==', dojoId));
+    const unsub = onSnapshot(q, (s) => {
+      setCount(s.size);
+    });
+    return () => unsub();
+  }, [dojoId]);
+
+  return (
+    <div className="text-[11px] text-muted-foreground mt-1.5 flex items-center gap-1">
+      <Users className="h-3.5 w-3.5 text-primary" />
+      <span>{count} Kohai</span>
+    </div>
   );
 }

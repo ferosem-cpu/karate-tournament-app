@@ -22,12 +22,22 @@ export default function KohaiPage() {
   const [loading, setLoading] = useState(true);
   const [search, setSearch] = useState('');
   const { profile, user } = useAuth();
+  const [ownedDojoIds, setOwnedDojoIds] = useState(new Set());
 
   const canManageKohai =
     profile?.role === 'super_admin' ||
     profile?.role === 'dojo_admin' ||
     profile?.role === 'coach' ||
     profile?.role === 'tournament_organizer';
+
+  useEffect(() => {
+    if (!user || profile?.role !== 'dojo_admin') return;
+    const q = query(collection(db, 'dojos'), where('ownerId', '==', user.uid));
+    const unsub = onSnapshot(q, (s) => {
+      setOwnedDojoIds(new Set(s.docs.map((d) => d.id)));
+    }, () => {});
+    return () => unsub();
+  }, [user, profile]);
 
   useEffect(() => {
     if (!user) return;
@@ -60,7 +70,17 @@ export default function KohaiPage() {
     return () => unsub();
   }, [user, profile]);
 
-  const filtered = athletes.filter((a) => [a.fullName, a.dojoName, a.belt].join(' ').toLowerCase().includes(search.toLowerCase()));
+  const filtered = athletes
+    .filter((a) => {
+      if (a.status === 'pending_approval') {
+        const isOwner = a.ownerId === user?.uid;
+        const isSuperAdmin = profile?.role === 'super_admin';
+        const isDojoAdminOfThisDojo = profile?.role === 'dojo_admin' && ownedDojoIds.has(a.dojoId);
+        return isOwner || isSuperAdmin || isDojoAdminOfThisDojo;
+      }
+      return true;
+    })
+    .filter((a) => [a.fullName, a.dojoName, a.belt].join(' ').toLowerCase().includes(search.toLowerCase()));
 
   const remove = async (id, name) => {
     if (!confirm(`Remove kohai "${name}"?`)) return;
@@ -108,10 +128,12 @@ export default function KohaiPage() {
               <Users className="h-12 w-12 mx-auto text-primary mb-3" />
               <h3 className="font-semibold text-lg">No Kohai registered yet</h3>
               <p className="text-sm text-muted-foreground mt-1 mb-5">Add kohai individually or use bulk upload.</p>
-              <div className="flex gap-2 justify-center">
-                <Button asChild variant="outline"><Link href="/dashboard/kohai/bulk-upload"><Upload className="h-4 w-4 mr-2" /> Bulk Upload</Link></Button>
-                <Button asChild className="bg-primary hover:bg-primary/90"><Link href="/dashboard/kohai/new"><Plus className="h-4 w-4 mr-2" /> Register Kohai</Link></Button>
-              </div>
+              {canManageKohai && profile?.role !== 'spectator' && (
+                <div className="flex gap-2 justify-center">
+                  <Button asChild variant="outline"><Link href="/dashboard/kohai/bulk-upload"><Upload className="h-4 w-4 mr-2" /> Bulk Upload</Link></Button>
+                  <Button asChild className="bg-primary hover:bg-primary/90"><Link href="/dashboard/kohai/new"><Plus className="h-4 w-4 mr-2" /> Register Kohai</Link></Button>
+                </div>
+              )}
             </div>
           ) : (
             <div className="overflow-x-auto">

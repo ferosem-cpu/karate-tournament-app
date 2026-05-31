@@ -3,7 +3,8 @@
 import { useState, useRef } from 'react';
 import { useRouter } from 'next/navigation';
 import { addDoc, collection, doc, serverTimestamp, updateDoc } from 'firebase/firestore';
-import { db } from '@/lib/firebase';
+import { ref as sRef, uploadBytesResumable, getDownloadURL } from 'firebase/storage';
+import { db, storage } from '@/lib/firebase';
 import { uploadFileWithTracking } from '@/lib/media';
 import { useAuth } from '@/lib/auth-context';
 import { Button } from '@/components/ui/button';
@@ -22,6 +23,7 @@ import { Loader2, Upload, FileText, Image as ImageIcon, X } from 'lucide-react';
 const STATUSES = [
   { value: 'draft', label: 'Draft' },
   { value: 'registration_open', label: 'Registration Open' },
+  { value: 'registration_closed', label: 'Registration Closed' },
   { value: 'live', label: 'Live' },
   { value: 'completed', label: 'Completed' },
 ];
@@ -135,7 +137,7 @@ export default function TournamentForm({ initial, id }) {
         payload.createdBy = user.uid;
         const res = await addDoc(collection(db, 'tournaments'), payload);
         toast.success('Tournament created!');
-        router.push(`/dashboard/tournaments/${res.id}`);
+        router.push(`/dashboard/tournaments/${res.id}/setup/categories`);
       }
     } catch (err) {
       console.error(err);

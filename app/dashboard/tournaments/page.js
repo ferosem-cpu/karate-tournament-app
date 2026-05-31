@@ -15,7 +15,7 @@ import { isAdminOrOrganizer } from '@/lib/constants';
 import { formatDate, statusColor, statusLabel } from '@/lib/utils';
 
 export default function TournamentsPage() {
-  const { profile } = useAuth();
+  const { user, profile } = useAuth();
   const canManage = isAdminOrOrganizer(profile?.role);
   const [tournaments, setTournaments] = useState([]);
   const [search, setSearch] = useState('');
@@ -33,9 +33,14 @@ export default function TournamentsPage() {
     return () => unsub();
   }, []);
 
-  const filtered = tournaments.filter((t) =>
-    [t.name, t.city, t.country, t.venue].join(' ').toLowerCase().includes(search.toLowerCase())
-  );
+  const filtered = tournaments.filter((t) => {
+    if (t.status === 'draft') {
+      const isOwner = user?.uid && t.ownerId === user.uid;
+      const isSuperAdmin = profile?.role === 'super_admin';
+      if (!isOwner && !isSuperAdmin) return false;
+    }
+    return [t.name, t.city, t.country, t.venue].join(' ').toLowerCase().includes(search.toLowerCase());
+  });
 
   return (
     <>

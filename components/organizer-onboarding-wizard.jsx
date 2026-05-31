@@ -18,7 +18,7 @@ import Step7Publish from './onboarding-steps/step-7-publish';
 const STEPS = [
   { number: 1, title: 'Welcome & Overview', description: 'Get started' },
   { number: 2, title: 'Tournament Info', description: 'Basic details' },
-  { number: 3, title: 'Divisions & Categories', description: 'Define categories' },
+  { number: 3, title: 'Divisions & Event Categories', description: 'Define event categories' },
   { number: 4, title: 'Ring / Tatami Setup', description: 'Configure rings' },
   { number: 5, title: 'Assign Referees', description: 'Assign to rings' },
   { number: 6, title: 'Registration Rules', description: 'Set rules' },

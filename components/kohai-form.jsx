@@ -2,7 +2,7 @@
 
 import { useEffect, useRef, useState, useMemo } from 'react';
 import Link from 'next/link';
-import { useRouter } from 'next/navigation';
+import { useRouter, useSearchParams } from 'next/navigation';
 import { addDoc, collection, doc, onSnapshot, serverTimestamp, updateDoc } from 'firebase/firestore';
 import { db } from '@/lib/firebase';
 import { uploadFileWithTracking } from '@/lib/media';
@@ -23,7 +23,9 @@ const NO_DOJO_MSG = 'No affiliated dojo found. Please ensure your dojo is regist
 
 export default function KohaiForm({ initial, id }) {
   const router = useRouter();
-  const { user } = useAuth();
+  const searchParams = useSearchParams();
+  const queryDojoId = searchParams.get('dojoId');
+  const { user, profile } = useAuth();
   const fileRef = useRef();
   const docRef = useRef();
   const [busy, setBusy] = useState(false);
@@ -42,6 +44,7 @@ export default function KohaiForm({ initial, id }) {
     dojoName: initial?.dojoName || '',
     eventType: initial?.eventType || '',
     emergencyContactName: initial?.emergencyContactName || '',
+    emergencyContactEmail: initial?.emergencyContactEmail || '',
     emergencyContactPhone: initial?.emergencyContactPhone || '',
     emergencyContactRelation: initial?.emergencyContactRelation || '',
     proofOfAgeUrl: initial?.proofOfAgeUrl || '',
@@ -51,11 +54,26 @@ export default function KohaiForm({ initial, id }) {
 
   useEffect(() => {
     const unsub = onSnapshot(collection(db, 'dojos'), (s) => {
-      setDojos(s.docs.map((d) => ({ id: d.id, ...d.data() })));
+      const allDojos = s.docs.map((d) => ({ id: d.id, ...d.data() }));
+      setDojos(allDojos);
       setDojosLoaded(true);
+
+      if (!id) {
+        if (profile?.role === 'dojo_admin' && user?.uid) {
+          const myDojo = allDojos.find((d) => d.ownerId === user.uid);
+          if (myDojo) {
+            setForm((f) => ({ ...f, dojoId: myDojo.id, dojoName: myDojo.name }));
+          }
+        } else if (queryDojoId) {
+          const selectedDojo = allDojos.find((d) => d.id === queryDojoId);
+          if (selectedDojo) {
+            setForm((f) => ({ ...f, dojoId: selectedDojo.id, dojoName: selectedDojo.name }));
+          }
+        }
+      }
     });
     return () => unsub();
-  }, []);
+  }, [user, profile, id, queryDojoId]);
 
   const set = (k, v) => setForm((f) => ({ ...f, [k]: v }));
 
@@ -108,10 +126,25 @@ export default function KohaiForm({ initial, id }) {
     if (!form.eventType) return toast.error('Event category is required');
     if (!form.proofOfAgeUrl) return toast.error('Proof of age document is required (PDF/JPG/PNG)');
 
+    let finalDojoId = form.dojoId;
+    let finalDojoName = form.dojoName;
+    if (profile?.role === 'dojo_admin') {
+      const myDojo = dojos.find((d) => d.ownerId === user.uid);
+      if (myDojo) {
+        finalDojoId = myDojo.id;
+        finalDojoName = myDojo.name;
+      } else {
+        toast.error(NO_DOJO_MSG);
+        return;
+      }
+    }
+
     setBusy(true);
     try {
       const payload = {
         ...form,
+        dojoId: finalDojoId,
+        dojoName: finalDojoName,
         weight: form.weight === '' || form.weight == null ? null : Number(form.weight),
         age: age ?? null,
         updatedAt: serverTimestamp(),
@@ -186,15 +219,21 @@ export default function KohaiForm({ initial, id }) {
               <SelectContent className="max-h-72">{BELTS.map((b) => <SelectItem key={b} value={b}>{b}</SelectItem>)}</SelectContent>
             </Select>
           </Field>
-          <Field label="Dojo *">
-            <Select value={form.dojoId || undefined} onValueChange={onDojoChange}>
-              <SelectTrigger><SelectValue placeholder="Select registered dojo…" /></SelectTrigger>
-              <SelectContent>
-                {dojosLoaded && dojos.length === 0 ? <div className="px-2 py-1.5 text-xs text-red-300">{NO_DOJO_MSG}</div> :
-                  dojos.map((d) => <SelectItem key={d.id} value={d.id}>{d.name}</SelectItem>)}
-              </SelectContent>
-            </Select>
-          </Field>
+          {profile?.role === 'dojo_admin' ? (
+            <Field label="Dojo">
+              <Input value={form.dojoName || 'Your Registered Dojo'} disabled className="bg-secondary/40 text-muted-foreground border-border/40" />
+            </Field>
+          ) : (
+            <Field label="Dojo *">
+              <Select value={form.dojoId || undefined} onValueChange={onDojoChange}>
+                <SelectTrigger><SelectValue placeholder="Select registered dojo…" /></SelectTrigger>
+                <SelectContent>
+                  {dojosLoaded && dojos.length === 0 ? <div className="px-2 py-1.5 text-xs text-red-300">{NO_DOJO_MSG}</div> :
+                    dojos.map((d) => <SelectItem key={d.id} value={d.id}>{d.name}</SelectItem>)}
+                </SelectContent>
+              </Select>
+            </Field>
+          )}
           <Field label="Event Category *">
             <Select value={form.eventType || undefined} onValueChange={(v) => set('eventType', v)}>
               <SelectTrigger><SelectValue placeholder="Kata / Kumite / Team…" /></SelectTrigger>
@@ -236,8 +275,9 @@ export default function KohaiForm({ initial, id }) {
 
       <Card className="border-border/60"><CardContent className="p-6">
         <h2 className="font-semibold text-lg mb-5">Emergency Contact</h2>
-        <div className="grid sm:grid-cols-3 gap-4">
+        <div className="grid sm:grid-cols-4 gap-4">
           <Field label="Contact Name"><Input value={form.emergencyContactName} onChange={(e) => set('emergencyContactName', e.target.value)} placeholder="Parent / Guardian" /></Field>
+          <Field label="Contact Email"><Input type="email" value={form.emergencyContactEmail || ''} onChange={(e) => set('emergencyContactEmail', e.target.value)} placeholder="parent@example.com" /></Field>
           <Field label="Contact Phone"><Input value={form.emergencyContactPhone} onChange={(e) => set('emergencyContactPhone', e.target.value)} placeholder="+91…" /></Field>
           <Field label="Relationship"><Input value={form.emergencyContactRelation} onChange={(e) => set('emergencyContactRelation', e.target.value)} placeholder="Father / Mother" /></Field>
         </div>

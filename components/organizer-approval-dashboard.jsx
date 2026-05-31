@@ -13,19 +13,44 @@ import { AlertCircle, CheckCircle, X, Loader2 } from 'lucide-react';
 import { toast } from 'sonner';
 
 export default function OrganizerApprovalDashboard({ tournamentId, tournamentName }) {
-  const { profile } = useAuth();
+  const { user, profile } = useAuth();
   const [registrations, setRegistrations] = useState([]);
   const [loading, setLoading] = useState(true);
   const [processingId, setProcessingId] = useState(null);
   const [athleteDetails, setAthleteDetails] = useState({});
+  const [tournament, setTournament] = useState(null);
+  const [tournamentLoading, setTournamentLoading] = useState(true);
 
-  // Only allow tournament_organizer who owns the tournament
-  if (profile?.role !== 'tournament_organizer') {
+  useEffect(() => {
+    if (!tournamentId) return;
+    const unsub = onSnapshot(doc(db, 'tournaments', tournamentId), (s) => {
+      if (s.exists()) setTournament({ id: s.id, ...s.data() });
+      setTournamentLoading(false);
+    }, () => setTournamentLoading(false));
+    return () => unsub();
+  }, [tournamentId]);
+
+  const isOwner = tournament?.ownerId === user?.uid;
+  const isSuperAdmin = profile?.role === 'super_admin';
+  const hasAccess = isSuperAdmin || (profile?.role === 'tournament_organizer' && isOwner);
+
+  if (tournamentLoading) {
+    return (
+      <Card className="border-border/60">
+        <CardContent className="p-6 flex items-center justify-center gap-2">
+          <Loader2 className="h-4 w-4 animate-spin" />
+          Checking permissions…
+        </CardContent>
+      </Card>
+    );
+  }
+
+  if (!hasAccess) {
     return (
       <Alert className="border-red-500/40 bg-red-500/5">
         <AlertCircle className="h-4 w-4 text-red-400" />
         <AlertDescription className="text-red-300">
-          Only tournament organizers can approve registrations.
+          Only tournament organizers owning this tournament or super admins can approve registrations.
         </AlertDescription>
       </Alert>
     );

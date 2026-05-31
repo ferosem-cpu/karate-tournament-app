@@ -15,15 +15,16 @@ import PageHeader from '@/components/page-header';
 import { Upload, FileDown, FileSpreadsheet, CheckCircle2, AlertCircle, Trash2, Loader2, Sheet } from 'lucide-react';
 import { toast } from 'sonner';
 import { BELTS, GENDERS } from '@/lib/constants';
+import AccessDenied from '@/components/access-denied';
 
-const TEMPLATE_HEADERS = ['fullName', 'gender', 'dateOfBirth', 'belt', 'weight', 'dojo', 'eventType', 'emergencyContactName', 'emergencyContactPhone', 'emergencyContactRelation'];
+const TEMPLATE_HEADERS = ['fullName', 'gender', 'dateOfBirth', 'belt', 'weight', 'dojo', 'eventType', 'emergencyContactName', 'emergencyContactPhone', 'emergencyContactRelation', 'emergencyContactEmail'];
 const TEMPLATE_SAMPLE = [
-  { fullName: 'Hiro Tanaka', gender: 'Male', dateOfBirth: '2005-04-12', belt: 'Brown', weight: 68, dojo: 'Tanaka Karate Dojo', eventType: 'Kumite', emergencyContactName: 'Akira Tanaka', emergencyContactPhone: '+91 9876543210', emergencyContactRelation: 'Father' },
-  { fullName: 'Sara Khan', gender: 'Female', dateOfBirth: '2010-09-23', belt: 'Green', weight: 42, dojo: 'Tanaka Karate Dojo', eventType: 'Kata', emergencyContactName: 'Imran Khan', emergencyContactPhone: '+91 9876500000', emergencyContactRelation: 'Father' },
+  { fullName: 'Hiro Tanaka', gender: 'Male', dateOfBirth: '2005-04-12', belt: 'Brown', weight: 68, dojo: 'Tanaka Karate Dojo', eventType: 'Kumite', emergencyContactName: 'Akira Tanaka', emergencyContactPhone: '+91 9876543210', emergencyContactRelation: 'Father', emergencyContactEmail: 'parent@example.com' },
+  { fullName: 'Sara Khan', gender: 'Female', dateOfBirth: '2010-09-23', belt: 'Green', weight: 42, dojo: 'Tanaka Karate Dojo', eventType: 'Kata', emergencyContactName: 'Imran Khan', emergencyContactPhone: '+91 9876500000', emergencyContactRelation: 'Father', emergencyContactEmail: 'parent@example.com' },
 ];
 
 export default function BulkUploadPage() {
-  const { user } = useAuth();
+  const { user, profile, loading } = useAuth();
   const fileRef = useRef();
   const [rows, setRows] = useState([]);
   const [parsing, setParsing] = useState(false);
@@ -33,6 +34,18 @@ export default function BulkUploadPage() {
   const [dojos, setDojos] = useState([]);
   const [existingNames, setExistingNames] = useState(new Set());
   const [dragOver, setDragOver] = useState(false);
+
+  if (loading) {
+    return (
+      <div className="min-h-screen flex items-center justify-center">
+        <Loader2 className="h-7 w-7 animate-spin text-primary" />
+      </div>
+    );
+  }
+
+  if (profile?.role === 'spectator') {
+    return <AccessDenied resource="Bulk Upload" />;
+  }
 
   useEffect(() => {
     const u1 = onSnapshot(collection(db, 'dojos'), (s) => setDojos(s.docs.map((d) => ({ id: d.id, ...d.data() }))));
@@ -113,10 +126,21 @@ export default function BulkUploadPage() {
         data = XLSX.utils.sheet_to_json(ws, { defval: '' });
       } else { toast.error('Unsupported file. Use .csv, .xlsx or .xls'); setParsing(false); return; }
 
+      const myDojo = dojos.find((d) => d.ownerId === user?.uid);
+      const isDojoAdmin = profile?.role === 'dojo_admin';
+
       const enriched = data.map((r, i) => {
         const v = validateRow(r);
-        const dojoMatch = dojos.find((d) => (d.name || '').toLowerCase() === (r.dojo || '').toString().toLowerCase());
-        return { ...r, _idx: i, _errors: v.errors, _duplicate: v.isDuplicate, _dojoId: dojoMatch?.id || null, _dojoMatched: !!dojoMatch };
+        const dojoMatch = isDojoAdmin ? myDojo : dojos.find((d) => (d.name || '').toLowerCase() === (r.dojo || '').toString().toLowerCase());
+        return {
+          ...r,
+          dojo: isDojoAdmin ? (myDojo?.name || '') : r.dojo,
+          _idx: i,
+          _errors: v.errors,
+          _duplicate: v.isDuplicate,
+          _dojoId: dojoMatch?.id || null,
+          _dojoMatched: !!dojoMatch
+        };
       });
       setRows(enriched);
       toast.success(`Parsed ${enriched.length} rows`);
@@ -149,6 +173,7 @@ export default function BulkUploadPage() {
             emergencyContactName: r.emergencyContactName || '',
             emergencyContactPhone: r.emergencyContactPhone || '',
             emergencyContactRelation: r.emergencyContactRelation || '',
+            emergencyContactEmail: r.emergencyContactEmail || '',
             createdAt: serverTimestamp(),
             updatedAt: serverTimestamp(),
             createdBy: user.uid,

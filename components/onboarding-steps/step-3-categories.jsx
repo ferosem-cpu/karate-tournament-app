@@ -11,13 +11,34 @@ const EVENT_TYPES = ['Kata', 'Kumite', 'Team Kata', 'Team Kumite'];
 
 export default function Step3Categories({ wizardData, onNext }) {
   const [categories, setCategories] = useState(wizardData.categories || []);
-  const [newCategory, setNewCategory] = useState({ name: '', eventType: 'Kata', minAge: '', maxAge: '', minWeight: '', maxWeight: '' });
+  const [newCategory, setNewCategory] = useState({ 
+    name: '', eventType: 'Kata', 
+    minAge: '', maxAge: '', 
+    minWeight: '', maxWeight: '',
+    byAge: true, byWeight: true
+  });
   const [busy, setBusy] = useState(false);
 
   const addCategory = () => {
-    if (!newCategory.name.trim()) return alert('Category name required');
-    setCategories([...categories, { ...newCategory, id: Date.now() }]);
-    setNewCategory({ name: '', eventType: 'Kata', minAge: '', maxAge: '', minWeight: '', maxWeight: '' });
+    if (!newCategory.name.trim()) return alert('Event Category name required');
+    if (!newCategory.byAge && !newCategory.byWeight) {
+      return alert('Please check at least "Create event by age" or "Create event by weight"');
+    }
+    const catToAdd = {
+      ...newCategory,
+      minAge: newCategory.byAge ? newCategory.minAge : '',
+      maxAge: newCategory.byAge ? newCategory.maxAge : '',
+      minWeight: newCategory.byWeight ? newCategory.minWeight : '',
+      maxWeight: newCategory.byWeight ? newCategory.maxWeight : '',
+      id: Date.now()
+    };
+    setCategories([...categories, catToAdd]);
+    setNewCategory({ 
+      name: '', eventType: 'Kata', 
+      minAge: '', maxAge: '', 
+      minWeight: '', maxWeight: '',
+      byAge: true, byWeight: true
+    });
   };
 
   const removeCategory = (id) => {
@@ -34,16 +55,16 @@ export default function Step3Categories({ wizardData, onNext }) {
 
   return (
     <div className="space-y-5">
-      <h3 className="text-lg font-semibold">Divisions & Categories</h3>
+      <h3 className="text-lg font-semibold">Divisions & Event Categories</h3>
       <p className="text-sm text-muted-foreground">
-        Create categories based on age, belt, weight, and event type
+        Create event categories based on age, belt, weight, and event type
       </p>
 
       <div className="bg-secondary/20 rounded-lg p-4 space-y-3">
         <div className="grid sm:grid-cols-2 gap-3">
           <div>
             <Label className="text-xs uppercase tracking-wider text-muted-foreground mb-1 block">
-              Category Name
+              Event Category Name
             </Label>
             <Input
               value={newCategory.name}
@@ -68,38 +89,67 @@ export default function Step3Categories({ wizardData, onNext }) {
             </Select>
           </div>
 
-          <div>
-            <Label className="text-xs uppercase tracking-wider text-muted-foreground mb-1 block">
-              Min Age
-            </Label>
-            <Input type="number" value={newCategory.minAge} onChange={(e) => setNewCategory({ ...newCategory, minAge: e.target.value })} placeholder="6" />
+          <div className="sm:col-span-2 border-y border-zinc-800/40 py-2.5 my-1 flex gap-6">
+            <label className="flex items-center gap-2 text-sm font-semibold cursor-pointer">
+              <input 
+                type="checkbox" 
+                checked={newCategory.byAge} 
+                onChange={(e) => setNewCategory({ ...newCategory, byAge: e.target.checked })} 
+                className="h-4 w-4 rounded border-gray-300 text-primary focus:ring-primary bg-secondary"
+              />
+              <span>Create event by age</span>
+            </label>
+            <label className="flex items-center gap-2 text-sm font-semibold cursor-pointer">
+              <input 
+                type="checkbox" 
+                checked={newCategory.byWeight} 
+                onChange={(e) => setNewCategory({ ...newCategory, byWeight: e.target.checked })} 
+                className="h-4 w-4 rounded border-gray-300 text-primary focus:ring-primary bg-secondary"
+              />
+              <span>Create event by weight</span>
+            </label>
           </div>
 
-          <div>
-            <Label className="text-xs uppercase tracking-wider text-muted-foreground mb-1 block">
-              Max Age
-            </Label>
-            <Input type="number" value={newCategory.maxAge} onChange={(e) => setNewCategory({ ...newCategory, maxAge: e.target.value })} placeholder="11" />
-          </div>
+          {newCategory.byAge && (
+            <>
+              <div>
+                <Label className="text-xs uppercase tracking-wider text-muted-foreground mb-1 block">
+                  Min Age
+                </Label>
+                <Input type="number" value={newCategory.minAge} onChange={(e) => setNewCategory({ ...newCategory, minAge: e.target.value })} placeholder="6" />
+              </div>
 
-          <div>
-            <Label className="text-xs uppercase tracking-wider text-muted-foreground mb-1 block">
-              Min Weight (kg)
-            </Label>
-            <Input type="number" value={newCategory.minWeight} onChange={(e) => setNewCategory({ ...newCategory, minWeight: e.target.value })} placeholder="20" />
-          </div>
+              <div>
+                <Label className="text-xs uppercase tracking-wider text-muted-foreground mb-1 block">
+                  Max Age
+                </Label>
+                <Input type="number" value={newCategory.maxAge} onChange={(e) => setNewCategory({ ...newCategory, maxAge: e.target.value })} placeholder="11" />
+              </div>
+            </>
+          )}
 
-          <div>
-            <Label className="text-xs uppercase tracking-wider text-muted-foreground mb-1 block">
-              Max Weight (kg)
-            </Label>
-            <Input type="number" value={newCategory.maxWeight} onChange={(e) => setNewCategory({ ...newCategory, maxWeight: e.target.value })} placeholder="30" />
-          </div>
+          {newCategory.byWeight && (
+            <>
+              <div>
+                <Label className="text-xs uppercase tracking-wider text-muted-foreground mb-1 block">
+                  Min Weight (kg)
+                </Label>
+                <Input type="number" value={newCategory.minWeight} onChange={(e) => setNewCategory({ ...newCategory, minWeight: e.target.value })} placeholder="20" />
+              </div>
+
+              <div>
+                <Label className="text-xs uppercase tracking-wider text-muted-foreground mb-1 block">
+                  Max Weight (kg)
+                </Label>
+                <Input type="number" value={newCategory.maxWeight} onChange={(e) => setNewCategory({ ...newCategory, maxWeight: e.target.value })} placeholder="30" />
+              </div>
+            </>
+          )}
         </div>
 
         <Button onClick={addCategory} variant="outline" className="w-full" size="sm">
           <Plus className="h-4 w-4 mr-2" />
-          Add Category
+          Add Event Category
         </Button>
       </div>
 

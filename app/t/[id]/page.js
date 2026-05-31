@@ -9,9 +9,11 @@ import { Badge } from '@/components/ui/badge';
 import { Card, CardContent } from '@/components/ui/card';
 import { Calendar, MapPin, Grid3x3, FileDown, Trophy, Loader2, Swords } from 'lucide-react';
 import { formatDate, statusColor, statusLabel } from '@/lib/utils';
+import { useAuth } from '@/lib/auth-context';
 
 export default function PublicTournamentPage() {
   const { id } = useParams();
+  const { user, profile } = useAuth();
   const [t, setT] = useState(null);
   const [loading, setLoading] = useState(true);
 
@@ -36,6 +38,22 @@ export default function PublicTournamentPage() {
       <p className="text-muted-foreground">Tournament not found.</p>
     </div>
   );
+
+  if (t.status === 'draft') {
+    const isOwner = user?.uid && t.ownerId === user.uid;
+    const isSuperAdmin = profile?.role === 'super_admin';
+    if (!isOwner && !isSuperAdmin) {
+      return (
+        <div className="min-h-screen flex flex-col items-center justify-center bg-background gap-3">
+          <Trophy className="h-12 w-12 text-muted-foreground animate-pulse" />
+          <h2 className="text-xl font-bold text-zinc-100">Draft Tournament</h2>
+          <p className="text-zinc-500 text-sm max-w-sm text-center">
+            This tournament is currently in draft mode and is not visible to the public. Only the organizer and super admins can view it.
+          </p>
+        </div>
+      );
+    }
+  }
 
   return (
     <div className="min-h-screen bg-background">

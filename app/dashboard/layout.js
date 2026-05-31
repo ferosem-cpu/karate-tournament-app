@@ -15,14 +15,45 @@ import {
   LogOut, 
   Home,
   Menu,
-  ShieldCheck
+  ShieldCheck,
+  Loader2
 } from 'lucide-react';
 import { toast } from 'sonner';
+import SpectatorOnboarding from '@/components/spectator-onboarding';
 
 export default function DashboardLayout({ children }) {
   const pathname = usePathname();
   const router = useRouter();
-  const { profile } = useAuth();
+  const { profile, loading } = useAuth();
+  const [sessionOnboarded, setSessionOnboarded] = React.useState(false);
+
+  React.useEffect(() => {
+    if (typeof window !== 'undefined') {
+      setSessionOnboarded(!!sessionStorage.getItem('sessionOnboarded'));
+    }
+  }, []);
+
+  if (loading) {
+    return (
+      <div className="flex min-h-screen bg-zinc-950 items-center justify-center text-zinc-400">
+        <Loader2 className="h-8 w-8 animate-spin text-primary mr-2" />
+        <span>Loading profile...</span>
+      </div>
+    );
+  }
+
+  if (profile?.role === 'spectator' && !sessionOnboarded) {
+    return (
+      <div className="flex min-h-screen bg-zinc-950 items-center justify-center p-4">
+        <SpectatorOnboarding 
+          onComplete={() => {
+            sessionStorage.setItem('sessionOnboarded', 'true');
+            window.location.reload();
+          }} 
+        />
+      </div>
+    );
+  }
 
   const handleLogout = async () => {
     try {
@@ -40,12 +71,12 @@ export default function DashboardLayout({ children }) {
     { href: '/dashboard/tournaments', label: 'Tournaments', icon: Trophy },
     { href: '/dashboard/dojos', label: 'Manage Dojos', icon: Building2 },
     { href: '/dashboard/kohai', label: 'Competitor Roster', icon: Users },
-    { href: '/dashboard/users', label: 'User Management', icon: ShieldCheck },
     { href: '/dashboard/reports', label: 'System Reports', icon: BarChart3 },
   ];
 
   // Include cleanup utilities strictly for Super Admin profiles
   if (profile?.role === 'super_admin') {
+    navItems.push({ href: '/dashboard/users', label: 'User Management', icon: ShieldCheck });
     navItems.push({ href: '/dashboard/admin/data-cleanup', label: 'Dev Utilities', icon: Settings });
   }
 

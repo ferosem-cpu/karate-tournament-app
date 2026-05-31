@@ -31,7 +31,7 @@ const NAV = [
   { href: '/dashboard/tournaments', label: 'Tournaments', icon: Trophy },
   { href: '/dashboard/kohai', label: 'Kohai', icon: Users },
   { href: '/dashboard/dojos', label: 'Dojos', icon: Building2 },
-  { href: '/dashboard/categories', label: 'Categories', icon: Tags },
+  { href: '/dashboard/categories', label: 'Event Categories', icon: Tags },
   { href: '/dashboard/tatamis', label: 'Tatamis', icon: Grid3x3 },
   { href: '/dashboard/reports', label: 'Reports', icon: BarChart3 },
   { href: '/dashboard/media', label: 'Media', icon: HardDrive },

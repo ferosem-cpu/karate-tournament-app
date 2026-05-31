@@ -18,7 +18,7 @@ const STATUSES = [
   { value: 'closed', label: 'Closed' },
 ];
 
-export default function TatamiFormDialog({ open, onOpenChange, tournaments, initial, id }) {
+export default function TatamiFormDialog({ open, onOpenChange, tournaments, initial, id, lockedTournamentId }) {
   const { user } = useAuth();
   const [busy, setBusy] = useState(false);
   const [form, setForm] = useState({ name: '', tournamentId: '', tournamentName: '', status: 'active', assignedRefereeName: '', notes: '' });
@@ -32,8 +32,15 @@ export default function TatamiFormDialog({ open, onOpenChange, tournaments, init
       assignedRefereeName: initial.assignedRefereeName || '',
       notes: initial.notes || '',
     });
-    else setForm({ name: '', tournamentId: '', tournamentName: '', status: 'active', assignedRefereeName: '', notes: '' });
-  }, [initial, open]);
+    else setForm({ 
+      name: '', 
+      tournamentId: lockedTournamentId || '', 
+      tournamentName: tournaments.find((t) => t.id === lockedTournamentId)?.name || '', 
+      status: 'active', 
+      assignedRefereeName: '', 
+      notes: '' 
+    });
+  }, [initial, open, lockedTournamentId, tournaments]);
 
   const set = (k, v) => setForm((f) => ({ ...f, [k]: v }));
   const onTournamentChange = (tid) => {
@@ -73,12 +80,14 @@ export default function TatamiFormDialog({ open, onOpenChange, tournaments, init
         </DialogHeader>
         <form onSubmit={submit} className="space-y-4 mt-2">
           <F label="Tatami Name *"><Input value={form.name} onChange={(e) => set('name', e.target.value)} required placeholder="Tatami 1" /></F>
-          <F label="Tournament *">
-            <Select value={form.tournamentId || undefined} onValueChange={onTournamentChange}>
-              <SelectTrigger><SelectValue placeholder="Select tournament…" /></SelectTrigger>
-              <SelectContent>{tournaments.map((t) => <SelectItem key={t.id} value={t.id}>{t.name}</SelectItem>)}</SelectContent>
-            </Select>
-          </F>
+          {!lockedTournamentId && (
+            <F label="Tournament *">
+              <Select value={form.tournamentId || undefined} onValueChange={onTournamentChange}>
+                <SelectTrigger><SelectValue placeholder="Select tournament…" /></SelectTrigger>
+                <SelectContent>{tournaments.map((t) => <SelectItem key={t.id} value={t.id}>{t.name}</SelectItem>)}</SelectContent>
+              </Select>
+            </F>
+          )}
           <div className="grid sm:grid-cols-2 gap-3">
             <F label="Status">
               <Select value={form.status} onValueChange={(v) => set('status', v)}>

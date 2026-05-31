@@ -1,6 +1,6 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { useAuth } from '@/lib/auth-context';
 import { collection, addDoc, serverTimestamp, writeBatch, doc } from 'firebase/firestore';
 import { db } from '@/lib/firebase';
@@ -12,13 +12,19 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { Loader2, Wand2 } from 'lucide-react';
 import { toast } from 'sonner';
 
-export default function AutoCreateTatamisDialog({ open, onOpenChange, tournaments }) {
+export default function AutoCreateTatamisDialog({ open, onOpenChange, tournaments, lockedTournamentId }) {
   const { user } = useAuth();
   const [busy, setBusy] = useState(false);
   const [count, setCount] = useState(4);
-  const [tournamentId, setTournamentId] = useState('');
+  const [tournamentId, setTournamentId] = useState(lockedTournamentId || '');
   const [prefix, setPrefix] = useState('Tatami');
   const [defaultReferee, setDefaultReferee] = useState('');
+
+  useEffect(() => {
+    if (lockedTournamentId) {
+      setTournamentId(lockedTournamentId);
+    }
+  }, [lockedTournamentId]);
 
   const create = async () => {
     if (!tournamentId) return toast.error('Select a tournament');
@@ -56,13 +62,15 @@ export default function AutoCreateTatamisDialog({ open, onOpenChange, tournament
           <DialogDescription>Quickly generate multiple tatamis with default referee assigned. You can edit each after creation.</DialogDescription>
         </DialogHeader>
         <div className="space-y-3">
-          <div>
-            <Label className="text-xs uppercase tracking-wider text-muted-foreground mb-1.5 block">Tournament *</Label>
-            <Select value={tournamentId || undefined} onValueChange={setTournamentId}>
-              <SelectTrigger><SelectValue placeholder="Select tournament…" /></SelectTrigger>
-              <SelectContent>{tournaments.map((t) => <SelectItem key={t.id} value={t.id}>{t.name}</SelectItem>)}</SelectContent>
-            </Select>
-          </div>
+          {!lockedTournamentId && (
+            <div>
+              <Label className="text-xs uppercase tracking-wider text-muted-foreground mb-1.5 block">Tournament *</Label>
+              <Select value={tournamentId || undefined} onValueChange={setTournamentId}>
+                <SelectTrigger><SelectValue placeholder="Select tournament…" /></SelectTrigger>
+                <SelectContent>{tournaments.map((t) => <SelectItem key={t.id} value={t.id}>{t.name}</SelectItem>)}</SelectContent>
+              </Select>
+            </div>
+          )}
           <div className="grid grid-cols-2 gap-3">
             <div><Label className="text-xs uppercase tracking-wider text-muted-foreground mb-1.5 block">Number *</Label><Input type="number" min="1" max="50" value={count} onChange={(e) => setCount(e.target.value)} /></div>
             <div><Label className="text-xs uppercase tracking-wider text-muted-foreground mb-1.5 block">Name Prefix</Label><Input value={prefix} onChange={(e) => setPrefix(e.target.value)} placeholder="Tatami" /></div>

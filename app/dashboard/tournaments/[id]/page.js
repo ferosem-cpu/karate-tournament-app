@@ -3,7 +3,7 @@
 import { useEffect, useState } from 'react';
 import Link from 'next/link';
 import { useParams } from 'next/navigation';
-import { collection, deleteDoc, doc, onSnapshot, query, where } from 'firebase/firestore';
+import { collection, deleteDoc, doc, onSnapshot, query, where, updateDoc, serverTimestamp } from 'firebase/firestore';
 import { db } from '@/lib/firebase';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent } from '@/components/ui/card';
@@ -12,6 +12,7 @@ import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import PageHeader from '@/components/page-header';
 import RegistrationDialog from '@/components/registration-dialog';
+import ParticipateTournamentDialog from '@/components/participate-tournament-dialog';
 import { Pencil, ExternalLink, Calendar, MapPin, FileText, Trophy, Copy, Grid3x3, Users, Plus, Tags, Trash2, Zap, Award } from 'lucide-react';
 import { toast } from 'sonner';
 import { formatDate, statusColor, statusLabel } from '@/lib/utils';
@@ -20,13 +21,28 @@ import { useAuth } from '@/lib/auth-context';
 import permissions from '@/lib/permissions';
 export default function TournamentDetailPage() {
   const { id } = useParams();
-  const { profile } = useAuth();
+  const { user, profile } = useAuth();
   const [t, setT] = useState(null);
   const [loading, setLoading] = useState(true);
   const [registrations, setRegistrations] = useState([]);
   const [categories, setCategories] = useState([]);
   const [tatamis, setTatamis] = useState([]);
   const [regOpen, setRegOpen] = useState(false);
+  const [participateOpen, setParticipateOpen] = useState(false);
+  const [myDojo, setMyDojo] = useState(null);
+
+  useEffect(() => {
+    if (!user?.uid) return;
+    const q = query(collection(db, 'dojos'), where('ownerId', '==', user.uid));
+    const unsubDojo = onSnapshot(q, (s) => {
+      if (!s.empty) {
+        setMyDojo({ id: s.docs[0].id, ...s.docs[0].data() });
+      } else {
+        setMyDojo(null);
+      }
+    });
+    return () => unsubDojo();
+  }, [user?.uid]);
 
   useEffect(() => {
     const unsub = onSnapshot(doc(db, 'tournaments', id), (s) => {
@@ -43,14 +59,67 @@ export default function TournamentDetailPage() {
   const publicUrl = typeof window !== 'undefined' ? `${window.location.origin}/t/${id}` : '';
   const copy = () => { navigator.clipboard.writeText(publicUrl); toast.success('Public link copied'); };
 
-  const removeReg = async (rid, name) => {
+  const canManageRegistrations = profile?.role === 'super_admin' || (profile?.role === 'tournament_organizer' && t?.ownerId === user?.uid);
+
+  const canDeleteRow = (r) => {
+    if (profile?.role === 'super_admin') return true;
+    if (profile?.role === 'tournament_organizer' && t?.ownerId === user?.uid) return true;
+    if (profile?.role === 'dojo_admin' && r.dojoId && r.dojoId === myDojo?.id) return true;
+    return false;
+  };
+
+  const removeReg = async (rid, name, dojoId) => {
+    const isAllowed = 
+      profile?.role === 'super_admin' ||
+      (profile?.role === 'tournament_organizer' && t?.ownerId === user?.uid) ||
+      (profile?.role === 'dojo_admin' && dojoId && dojoId === myDojo?.id);
+
+    if (!isAllowed) {
+      toast.error('You do not have permission to remove registrations.');
+      return;
+    }
     if (!confirm(`Remove ${name} from this tournament?`)) return;
     try { await deleteDoc(doc(db, 'tournament_registrations', rid)); toast.success('Removed'); }
     catch (e) { toast.error(e.message); }
   };
 
+  const handleToggleRegistration = async () => {
+    if (!t) return;
+    const newStatus = t.status === 'registration_open' ? 'registration_closed' : 'registration_open';
+    const confirmMsg = newStatus === 'registration_closed' 
+      ? 'Are you sure you want to close registration? This will restrict regular registrations.'
+      : 'Are you sure you want to open registration?';
+    if (!confirm(confirmMsg)) return;
+
+    try {
+      await updateDoc(doc(db, 'tournaments', id), {
+        status: newStatus,
+        updatedAt: serverTimestamp(),
+      });
+      toast.success(newStatus === 'registration_closed' ? 'Registration closed' : 'Registration opened');
+    } catch (e) {
+      toast.error(e.message || 'Failed to update registration status');
+    }
+  };
+
   if (loading) return <div className="text-muted-foreground text-sm">Loading…</div>;
   if (!t) return <div className="text-muted-foreground text-sm">Tournament not found.</div>;
+
+  if (t.status === 'draft') {
+    const isOwner = user?.uid && t.ownerId === user.uid;
+    const isSuperAdmin = profile?.role === 'super_admin';
+    if (!isOwner && !isSuperAdmin) {
+      return (
+        <div className="p-8 text-center text-muted-foreground py-20">
+          <Trophy className="h-12 w-12 text-muted-foreground mx-auto mb-3" />
+          <h3 className="font-bold text-lg text-zinc-300">Access Restricted</h3>
+          <p className="text-sm text-zinc-500 mt-1 max-w-md mx-auto">
+            This tournament is currently in draft mode. Only the organizer and super admins can manage it.
+          </p>
+        </div>
+      );
+    }
+  }
   
   const canEdit = permissions.canEditTournament(profile?.uid, profile?.role, t);
   return (
@@ -64,14 +133,24 @@ export default function TournamentDetailPage() {
             <Button asChild variant="outline"><Link href={`/t/${id}`} target="_blank"><ExternalLink className="h-4 w-4 mr-2" /> Public Page</Link></Button>
             <Button asChild variant="outline" className="border-amber-500/40 text-amber-300 hover:bg-amber-500/10 hover:text-amber-200"><Link href={`/dashboard/tournaments/${id}/certificates`}><Award className="h-4 w-4 mr-2" /> Certificates</Link></Button>
             <Button asChild className="bg-red-600 hover:bg-red-700 text-white"><Link href={`/dashboard/tournaments/${id}/live`}><Zap className="h-4 w-4 mr-2" /> Live Operations</Link></Button>
+            {canEdit && t.status === 'registration_open' && (
+              <Button onClick={handleToggleRegistration} variant="outline" className="border-red-500/40 text-red-300 hover:bg-red-500/10 hover:text-red-200">
+                Close Registration
+              </Button>
+            )}
+            {canEdit && t.status === 'registration_closed' && (
+              <Button onClick={handleToggleRegistration} variant="outline" className="border-emerald-500/40 text-emerald-300 hover:bg-emerald-500/10 hover:text-emerald-200">
+                Open Registration
+              </Button>
+            )}
             {canEdit && (
-  <Button asChild variant="outline">
-    <Link href={`/dashboard/tournaments/${id}/edit`}>
-      <Pencil className="h-4 w-4 mr-2" />
-      Edit
-    </Link>
-  </Button>
-)}
+              <Button asChild variant="outline">
+                <Link href={`/dashboard/tournaments/${id}/edit`}>
+                  <Pencil className="h-4 w-4 mr-2" />
+                  Edit
+                </Link>
+              </Button>
+            )}
           </>
         }
       />
@@ -115,7 +194,19 @@ export default function TournamentDetailPage() {
               <h3 className="font-semibold">Registrations</h3>
               <p className="text-xs text-muted-foreground mt-0.5">{registrations.length} kohai registered to this tournament</p>
             </div>
-            {profile?.role !== 'spectator' && <Button onClick={() => setRegOpen(true)} className="bg-primary hover:bg-primary/90"><Plus className="h-4 w-4 mr-2" /> Add Registration</Button>}
+            <div className="flex gap-2">
+              {canManageRegistrations && (
+                <Button onClick={() => setRegOpen(true)} className="bg-primary hover:bg-primary/90">
+                  <Plus className="h-4 w-4 mr-2" /> 
+                  {t.status === 'registration_closed' ? 'Spot Registration' : 'Add Registration'}
+                </Button>
+              )}
+              {profile?.role === 'dojo_admin' && t.status === 'registration_open' && (
+                <Button onClick={() => setParticipateOpen(true)} className="bg-primary hover:bg-primary/90">
+                  <Users className="h-4 w-4 mr-2" /> Participate in Tournament
+                </Button>
+              )}
+            </div>
           </div>
           {registrations.length === 0 ? (
             <div className="p-10 text-center text-sm text-muted-foreground">No registrations yet. Add the first kohai.</div>
@@ -128,7 +219,7 @@ export default function TournamentDetailPage() {
                   <TableHead>Belt</TableHead>
                   <TableHead>Category</TableHead>
                   <TableHead>Status</TableHead>
-                  {profile?.role !== 'spectator' && <TableHead className="text-right">—</TableHead>}
+                  {(canManageRegistrations || profile?.role === 'dojo_admin') && <TableHead className="text-right">—</TableHead>}
                 </TableRow></TableHeader>
                 <TableBody>
                   {registrations.map((r) => (
@@ -143,7 +234,17 @@ export default function TournamentDetailPage() {
                       <TableCell>{r.athleteBelt ? <Badge variant="outline" className={`${beltClass(r.athleteBelt)} text-[10px]`}>{r.athleteBelt}</Badge> : '—'}</TableCell>
                       <TableCell className="text-muted-foreground">{r.categoryName || '—'}</TableCell>
                       <TableCell><Badge variant="outline" className="bg-emerald-500/15 text-emerald-300 border-emerald-500/40 text-[10px]">{r.status || 'approved'}</Badge></TableCell>
-                      {profile?.role !== 'spectator' && <TableCell className="text-right"><Button size="sm" variant="ghost" onClick={() => removeReg(r.id, r.athleteName)}><Trash2 className="h-3.5 w-3.5 text-destructive" /></Button></TableCell>}
+                      {(canManageRegistrations || profile?.role === 'dojo_admin') && (
+                        <TableCell className="text-right">
+                          {canDeleteRow(r) ? (
+                            <Button size="sm" variant="ghost" onClick={() => removeReg(r.id, r.athleteName, r.dojoId)}>
+                              <Trash2 className="h-3.5 w-3.5 text-destructive" />
+                            </Button>
+                          ) : (
+                            <span className="text-zinc-600 text-xs">—</span>
+                          )}
+                        </TableCell>
+                      )}
                     </TableRow>
                   ))}
                 </TableBody>
@@ -178,6 +279,7 @@ export default function TournamentDetailPage() {
       </Card>
 
       <RegistrationDialog open={regOpen} onOpenChange={setRegOpen} tournament={t} />
+      <ParticipateTournamentDialog open={participateOpen} onOpenChange={setParticipateOpen} tournament={t} />
     </>
   );
 }

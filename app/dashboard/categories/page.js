@@ -50,9 +50,9 @@ export default function CategoriesPage() {
   }, [registrations]);
 
   const remove = async (id, name) => {
-    if (!canManage) return toast.error('Only Super Admins / Tournament Creators can delete categories');
-    if (!confirm(`Delete category "${name}"?`)) return;
-    try { await deleteDoc(doc(db, 'categories', id)); toast.success('Category deleted'); }
+    if (!canManage) return toast.error('Only Super Admins / Tournament Creators can delete event categories');
+    if (!confirm(`Delete event category "${name}"?`)) return;
+    try { await deleteDoc(doc(db, 'categories', id)); toast.success('Event Category deleted'); }
     catch (e) { toast.error(e.message); }
   };
   const openCreate = () => { if (!canManage) return; setEditing(null); setDialogOpen(true); };
@@ -62,13 +62,13 @@ export default function CategoriesPage() {
   return (
     <>
       <PageHeader
-        title="Categories"
-        description="Kata & Kumite categories · age, gender, belt and weight rules. Each category shows assigned kohai with dojo and belt."
+        title="Event Categories"
+        description="Kata & Kumite event categories · age, gender, belt and weight rules. Each event category shows assigned kohai with dojo and belt."
         actions={
           canManage ? (
             <>
-              <Button onClick={openAuto} variant="outline" className="border-amber-500/40 text-amber-300 hover:bg-amber-500/10"><Wand2 className="h-4 w-4 mr-2" /> Auto Create Category</Button>
-              <Button onClick={openCreate} className="bg-primary hover:bg-primary/90"><Plus className="h-4 w-4 mr-2" /> Manual Create Category</Button>
+              <Button onClick={openAuto} variant="outline" className="border-amber-500/40 text-amber-300 hover:bg-amber-500/10"><Wand2 className="h-4 w-4 mr-2" /> Auto Create Event Categories</Button>
+              <Button onClick={openCreate} className="bg-primary hover:bg-primary/90"><Plus className="h-4 w-4 mr-2" /> Manual Create Event Category</Button>
             </>
           ) : (
             <Badge variant="outline" className="px-3 py-1.5"><Lock className="h-3 w-3 mr-1" /> View-only access</Badge>
@@ -80,13 +80,13 @@ export default function CategoriesPage() {
         <Card className="border-amber-500/40 bg-amber-500/5 mb-5">
           <CardContent className="p-3 flex items-center gap-2 text-sm text-amber-200">
             <Lock className="h-4 w-4" />
-            <span>You have <strong>view-only</strong> access. Only Super Admins and Tournament Creators can create, edit or delete categories.</span>
+            <span>You have <strong>view-only</strong> access. Only Super Admins and Tournament Creators can create, edit or delete event categories.</span>
           </CardContent>
         </Card>
       )}
 
       <div className="mb-5 flex flex-col sm:flex-row gap-3">
-        <div className="relative flex-1 max-w-md"><Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" /><Input className="pl-9" placeholder="Search categories…" value={search} onChange={(e) => setSearch(e.target.value)} /></div>
+        <div className="relative flex-1 max-w-md"><Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" /><Input className="pl-9" placeholder="Search event categories…" value={search} onChange={(e) => setSearch(e.target.value)} /></div>
         <Select value={tournamentFilter} onValueChange={setTournamentFilter}>
           <SelectTrigger className="max-w-xs"><SelectValue /></SelectTrigger>
           <SelectContent>
@@ -101,8 +101,8 @@ export default function CategoriesPage() {
         : filtered.length === 0 ? (
           <Card className="border-border/60"><CardContent className="p-16 text-center">
             <Tags className="h-12 w-12 mx-auto text-primary mb-3" />
-            <h3 className="font-semibold text-lg">No categories yet</h3>
-            <p className="text-sm text-muted-foreground mt-1">{canManage ? 'Create your first category or use Auto Create.' : 'Categories will appear here once they’re configured.'}</p>
+            <h3 className="font-semibold text-lg">No event categories yet</h3>
+            <p className="text-sm text-muted-foreground mt-1">{canManage ? 'Create your first event category or use Auto Create.' : 'Event categories will appear here once they’re configured.'}</p>
           </CardContent></Card>
         ) : (
           <div className="space-y-3">

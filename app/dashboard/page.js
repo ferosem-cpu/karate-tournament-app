@@ -23,7 +23,16 @@ export default function DashboardPage() {
     // Fetch recent 6 tournaments
     const q = query(collection(db, 'tournaments'), orderBy('createdAt', 'desc'), limit(6));
     const unsub = onSnapshot(q, (snap) => {
-      setTournaments(snap.docs.map((d) => ({ id: d.id, ...d.data() })));
+      const allTournaments = snap.docs.map((d) => ({ id: d.id, ...d.data() }));
+      const visibleTournaments = allTournaments.filter((t) => {
+        if (t.status === 'draft') {
+          const isOwner = user?.uid && t.ownerId === user.uid;
+          const isSuperAdmin = profile?.role === 'super_admin';
+          return isOwner || isSuperAdmin;
+        }
+        return true;
+      });
+      setTournaments(visibleTournaments);
     });
 
     // Real-time counter streams
@@ -37,7 +46,7 @@ export default function DashboardPage() {
       unsubA(); 
       unsubT(); 
     };
-  }, [user]);
+  }, [user, profile]);
 
   const upcoming = tournaments.filter((t) => t.status === 'registration_open' || t.status === 'draft').length;
   const live = tournaments.filter((t) => t.status === 'live').length;
