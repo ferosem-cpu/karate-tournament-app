@@ -1,5 +1,8 @@
 'use client';
 
+// Option A: Sensei onboarding directly upgrades users to dojo_admin after creating a dojo.
+// ApplyForRoleButton (approval queue) is for spectators who did not use this path.
+
 import { useState, useEffect, useRef } from 'react';
 import { collection, doc, addDoc, setDoc, onSnapshot, getDoc, query, where, serverTimestamp } from 'firebase/firestore';
 import { db } from '@/lib/firebase';

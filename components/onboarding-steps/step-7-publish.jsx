@@ -4,25 +4,34 @@ import { useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent } from '@/components/ui/card';
-import { Alert, AlertDescription } from '@/components/ui/alert';
-import { CheckCircle, AlertCircle, Loader2, Rocket } from 'lucide-react';
+import { CheckCircle, Loader2, Rocket } from 'lucide-react';
 import { toast } from 'sonner';
+import { useAuth } from '@/lib/auth-context';
+import { publishTournamentFromWizard } from '@/lib/wizard-publish';
 
 export default function Step7Publish({ wizardData, onNext }) {
   const router = useRouter();
+  const { user, profile } = useAuth();
   const [busy, setBusy] = useState(false);
   const [published, setPublished] = useState(false);
 
   const handlePublish = async () => {
+    if (!user?.uid) {
+      toast.error('You must be signed in to publish');
+      return;
+    }
     setBusy(true);
     try {
-      // In a real app, save the tournament here
-      await new Promise((r) => setTimeout(r, 1000));
+      const tournamentId = await publishTournamentFromWizard(
+        wizardData,
+        user.uid,
+        profile?.displayName || user.displayName || ''
+      );
       toast.success('Tournament published and going live!');
       setPublished(true);
       setTimeout(() => {
-        router.push('/dashboard/tournaments');
-      }, 2000);
+        router.push(`/dashboard/tournaments/${tournamentId}`);
+      }, 1500);
     } catch (err) {
       toast.error(err.message || 'Failed to publish tournament');
     } finally {
@@ -42,7 +51,7 @@ export default function Step7Publish({ wizardData, onNext }) {
             Your tournament is now live and ready to receive registrations.
           </p>
         </div>
-        <p className="text-sm text-muted-foreground">Redirecting to dashboard…</p>
+        <p className="text-sm text-muted-foreground">Redirecting to tournament…</p>
       </div>
     );
   }
@@ -81,24 +90,22 @@ export default function Step7Publish({ wizardData, onNext }) {
             <CheckCircle className="h-5 w-5 text-emerald-400 mt-0.5 shrink-0" />
             <div>
               <p className="font-medium">Registration Rules</p>
-              <p className="text-sm text-muted-foreground">Configured</p>
+              <p className="text-sm text-muted-foreground">
+                {wizardData.registrationRules?.requireApproval !== false
+                  ? 'Organizer approval required'
+                  : 'Instant registration'}
+              </p>
             </div>
           </div>
         </CardContent>
       </Card>
 
-      <Alert className="border-blue-500/40 bg-blue-500/5">
-        <AlertCircle className="h-4 w-4 text-blue-400" />
-        <AlertDescription className="text-blue-300/90">
-          Once published, your tournament will be visible to dojos and athletes. You can continue editing from the dashboard.
-        </AlertDescription>
-      </Alert>
-
-      <div className="flex justify-end gap-2">
-        <Button variant="outline" onClick={() => router.push('/dashboard')}>
-          Save for Later
-        </Button>
-        <Button onClick={handlePublish} disabled={busy} className="bg-emerald-600 hover:bg-emerald-700 min-w-[160px]">
+      <div className="flex justify-end">
+        <Button
+          onClick={handlePublish}
+          disabled={busy}
+          className="bg-primary hover:bg-primary/90 min-w-[180px]"
+        >
           {busy ? <Loader2 className="h-4 w-4 animate-spin mr-2" /> : <Rocket className="h-4 w-4 mr-2" />}
           Publish Tournament
         </Button>

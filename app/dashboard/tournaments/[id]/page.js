@@ -13,6 +13,11 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@
 import PageHeader from '@/components/page-header';
 import RegistrationDialog from '@/components/registration-dialog';
 import ParticipateTournamentDialog from '@/components/participate-tournament-dialog';
+import OrganizerApprovalDashboard from '@/components/organizer-approval-dashboard';
+import {
+  filterDisplayedRegistrations,
+  tournamentRequiresApproval,
+} from '@/lib/tournament-registrations';
 import { Pencil, ExternalLink, Calendar, MapPin, FileText, Trophy, Copy, Grid3x3, Users, Plus, Tags, Trash2, Zap, Award } from 'lucide-react';
 import { toast } from 'sonner';
 import { formatDate, statusColor, statusLabel } from '@/lib/utils';
@@ -122,6 +127,11 @@ export default function TournamentDetailPage() {
   }
   
   const canEdit = permissions.canEditTournament(profile?.uid, profile?.role, t);
+  const requiresApproval = tournamentRequiresApproval(t);
+  const displayedRegistrations = filterDisplayedRegistrations(registrations).filter(
+    (r) => r.status !== 'rejected'
+  );
+
   return (
     <>
       <PageHeader
@@ -180,11 +190,17 @@ export default function TournamentDetailPage() {
       </Card>
 
       <div className="grid lg:grid-cols-4 gap-4 mb-6">
-        <Stat icon={Users} label="Registrations" value={registrations.length} />
-        <Stat icon={Tags} label="Categories" value={categories.length} link="/dashboard/categories" />
-        <Stat icon={Grid3x3} label="Tatamis" value={tatamis.length} link="/dashboard/tatamis" />
+        <Stat icon={Users} label="Registrations" value={displayedRegistrations.length} />
+        <Stat icon={Tags} label="Categories" value={categories.length} link={`/dashboard/tournaments/${id}/setup/categories`} />
+        <Stat icon={Grid3x3} label="Tatamis" value={tatamis.length} link={`/dashboard/tournaments/${id}/setup/tatamis`} />
         <Stat icon={Calendar} label="Reg. Deadline" valueText={formatDate(t.registrationDeadline)} />
       </div>
+
+      {requiresApproval && canManageRegistrations && (
+        <div className="mb-6">
+          <OrganizerApprovalDashboard tournamentId={id} tournamentName={t.name} />
+        </div>
+      )}
 
       {/* Registrations */}
       <Card className="border-border/60 mb-6">
@@ -192,7 +208,7 @@ export default function TournamentDetailPage() {
           <div className="p-5 flex flex-col sm:flex-row sm:items-center gap-3 justify-between border-b border-border">
             <div>
               <h3 className="font-semibold">Registrations</h3>
-              <p className="text-xs text-muted-foreground mt-0.5">{registrations.length} kohai registered to this tournament</p>
+              <p className="text-xs text-muted-foreground mt-0.5">{displayedRegistrations.length} kohai registered to this tournament</p>
             </div>
             <div className="flex gap-2">
               {canManageRegistrations && (
@@ -208,7 +224,7 @@ export default function TournamentDetailPage() {
               )}
             </div>
           </div>
-          {registrations.length === 0 ? (
+          {displayedRegistrations.length === 0 ? (
             <div className="p-10 text-center text-sm text-muted-foreground">No registrations yet. Add the first kohai.</div>
           ) : (
             <div className="overflow-x-auto">
@@ -222,7 +238,7 @@ export default function TournamentDetailPage() {
                   {(canManageRegistrations || profile?.role === 'dojo_admin') && <TableHead className="text-right">—</TableHead>}
                 </TableRow></TableHeader>
                 <TableBody>
-                  {registrations.map((r) => (
+                  {displayedRegistrations.map((r) => (
                     <TableRow key={r.id} className="hover:bg-secondary/30">
                       <TableCell>
                         <div className="flex items-center gap-3">
@@ -233,7 +249,18 @@ export default function TournamentDetailPage() {
                       <TableCell className="text-muted-foreground">{r.dojoName || '—'}</TableCell>
                       <TableCell>{r.athleteBelt ? <Badge variant="outline" className={`${beltClass(r.athleteBelt)} text-[10px]`}>{r.athleteBelt}</Badge> : '—'}</TableCell>
                       <TableCell className="text-muted-foreground">{r.categoryName || '—'}</TableCell>
-                      <TableCell><Badge variant="outline" className="bg-emerald-500/15 text-emerald-300 border-emerald-500/40 text-[10px]">{r.status || 'approved'}</Badge></TableCell>
+                      <TableCell>
+                        <Badge
+                          variant="outline"
+                          className={
+                            r.status === 'pending'
+                              ? 'bg-amber-500/15 text-amber-300 border-amber-500/40 text-[10px]'
+                              : 'bg-emerald-500/15 text-emerald-300 border-emerald-500/40 text-[10px]'
+                          }
+                        >
+                          {r.status || 'approved'}
+                        </Badge>
+                      </TableCell>
                       {(canManageRegistrations || profile?.role === 'dojo_admin') && (
                         <TableCell className="text-right">
                           {canDeleteRow(r) ? (

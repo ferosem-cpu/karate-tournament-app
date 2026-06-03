@@ -21,6 +21,7 @@ import {
 import { toast } from 'sonner';
 import { Loader2, Users } from 'lucide-react';
 import { computeAge } from '@/lib/constants';
+import { tournamentRequiresApproval } from '@/lib/tournament-registrations';
 
 export default function ParticipateTournamentDialog({ open, onOpenChange, tournament }) {
   const { user, profile } = useAuth();
@@ -70,11 +71,14 @@ export default function ParticipateTournamentDialog({ open, onOpenChange, tourna
         const qRegs = query(
           collection(db, 'tournament_registrations'),
           where('tournamentId', '==', tournament.id),
-          where('dojoId', '==', dojoData.id),
-          where('status', '==', 'approved')
+          where('dojoId', '==', dojoData.id)
         );
         unsubRegs = onSnapshot(qRegs, (snapRegs) => {
-          setExistingRegs(snapRegs.docs.map(d => ({ id: d.id, ...d.data() })));
+          const rows = snapRegs.docs
+            .map((d) => ({ id: d.id, ...d.data() }))
+            .filter((r) => r.athleteId && !r.athleteIds)
+            .filter((r) => r.status === 'approved' || r.status === 'pending');
+          setExistingRegs(rows);
           setLoading(false);
         });
       } else {
@@ -214,6 +218,8 @@ export default function ParticipateTournamentDialog({ open, onOpenChange, tourna
   const handleSave = async () => {
     if (!dojo) return;
     setBusy(true);
+    const needsApproval = tournamentRequiresApproval(tournament);
+    const regStatus = needsApproval ? 'pending' : 'approved';
 
     try {
       const batch = writeBatch(db);
@@ -253,7 +259,7 @@ export default function ParticipateTournamentDialog({ open, onOpenChange, tourna
             dojoName: dojo.name || '',
             categoryId: catId,
             categoryName: category.name || '',
-            status: 'approved',
+            status: regStatus,
             createdAt: serverTimestamp(),
             updatedAt: serverTimestamp(),
             createdBy: user.uid,
@@ -262,7 +268,11 @@ export default function ParticipateTournamentDialog({ open, onOpenChange, tourna
       }
 
       await batch.commit();
-      toast.success('Dojo participation updated successfully');
+      toast.success(
+        needsApproval
+          ? 'Registration submitted for organizer approval'
+          : 'Dojo participation updated successfully'
+      );
       onOpenChange(false);
     } catch (err) {
       toast.error(err.message || 'Failed to save registrations');

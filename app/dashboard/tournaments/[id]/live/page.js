@@ -18,10 +18,12 @@ import { Activity, Grid3x3, Loader2, Plus, Trophy, Zap, ExternalLink, Award, Eye
 import { MATCH_STATUS_META } from '@/lib/constants';
 import { buildKumiteBracket, persistKumiteBracket, persistKataPool, deleteCategoryMatches, assignMatchToTatami } from '@/lib/match-engine';
 import { toast } from 'sonner';
+import AccessDenied from '@/components/access-denied';
+import permissions from '@/lib/permissions';
 
 export default function LiveTournamentDashboard() {
   const { id } = useParams();
-  const { user } = useAuth();
+  const { user, profile } = useAuth();
   const [tournament, setTournament] = useState(null);
   const [categories, setCategories] = useState([]);
   const [registrations, setRegistrations] = useState([]);
@@ -90,6 +92,14 @@ export default function LiveTournamentDashboard() {
   };
 
   if (!tournament) return <div className="text-sm text-muted-foreground">Loading…</div>;
+
+  const canManageLive =
+    profile?.role === 'super_admin' ||
+    permissions.canEditTournament(user?.uid, profile?.role, tournament);
+
+  if (!canManageLive) {
+    return <AccessDenied resource="live tournament operations" />;
+  }
 
   const liveMatches = matches.filter((m) => m.status === 'active' || m.status === 'paused');
   const queuedMatches = matches.filter((m) => m.status === 'queued' && !m.isBye);

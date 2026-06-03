@@ -4,7 +4,12 @@ import { useEffect, useState } from 'react';
 import { query, collection, where, onSnapshot, doc, getDoc } from 'firebase/firestore';
 import { db } from '@/lib/firebase';
 import { useAuth } from '@/lib/auth-context';
-import { approveTournamentRegistration, rejectTournamentRegistration } from '@/lib/tournament-registration-service';
+import {
+  approveTournamentRegistration,
+  approvePendingRegistration,
+  rejectTournamentRegistration,
+  isBatchRegistration,
+} from '@/lib/tournament-registration-service';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
@@ -66,12 +71,10 @@ export default function OrganizerApprovalDashboard({ tournamentId, tournamentNam
     );
 
     const unsub = onSnapshot(q, (snapshot) => {
-      setRegistrations(
-        snapshot.docs.map((d) => ({
-          id: d.id,
-          ...d.data(),
-        }))
-      );
+      const pending = snapshot.docs
+        .map((d) => ({ id: d.id, ...d.data() }))
+        .filter((r) => isBatchRegistration(r) || (r.athleteId && !r.athleteIds));
+      setRegistrations(pending);
       setLoading(false);
     });
 
@@ -109,7 +112,11 @@ export default function OrganizerApprovalDashboard({ tournamentId, tournamentNam
   const handleApprove = async (registrationId, registrationData) => {
     setProcessingId(registrationId);
     try {
-      await approveTournamentRegistration(registrationId, registrationData);
+      if (isBatchRegistration(registrationData)) {
+        await approveTournamentRegistration(registrationId, registrationData);
+      } else {
+        await approvePendingRegistration(registrationId);
+      }
       toast.success('Registration approved!');
     } catch (err) {
       toast.error(err.message || 'Failed to approve registration');
@@ -176,17 +183,30 @@ export default function OrganizerApprovalDashboard({ tournamentId, tournamentNam
             </div>
 
             <div className="mb-4 bg-secondary/30 rounded-lg p-3">
-              <div className="text-xs font-semibold text-muted-foreground mb-2">Athletes ({reg.athleteIds?.length || 0})</div>
-              <div className="space-y-1">
-                {reg.athleteIds?.map((athleteId) => {
-                  const athlete = athleteDetails[athleteId];
-                  return (
-                    <div key={athleteId} className="text-xs text-foreground/80">
-                      {athlete?.fullName || 'Loading...'}{athlete?.belt ? ` · ${athlete.belt}` : ''}
-                    </div>
-                  );
-                })}
-              </div>
+              {isBatchRegistration(reg) ? (
+                <>
+                  <div className="text-xs font-semibold text-muted-foreground mb-2">
+                    Athletes ({reg.athleteIds?.length || 0})
+                  </div>
+                  <div className="space-y-1">
+                    {reg.athleteIds?.map((athleteId) => {
+                      const athlete = athleteDetails[athleteId];
+                      return (
+                        <div key={athleteId} className="text-xs text-foreground/80">
+                          {athlete?.fullName || 'Loading...'}
+                          {athlete?.belt ? ` · ${athlete.belt}` : ''}
+                        </div>
+                      );
+                    })}
+                  </div>
+                </>
+              ) : (
+                <div className="text-xs text-foreground/80">
+                  <span className="font-semibold">{reg.athleteName || 'Athlete'}</span>
+                  {reg.categoryName ? ` · ${reg.categoryName}` : ''}
+                  {reg.dojoName ? ` · ${reg.dojoName}` : ''}
+                </div>
+              )}
             </div>
 
             <div className="flex gap-2 justify-end">

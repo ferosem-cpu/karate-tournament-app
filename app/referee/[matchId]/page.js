@@ -5,7 +5,9 @@ import Link from 'next/link';
 import { useParams, useRouter } from 'next/navigation';
 import { doc, onSnapshot } from 'firebase/firestore';
 import { db } from '@/lib/firebase';
+import { useAuth } from '@/lib/auth-context';
 import Protected from '@/components/protected';
+import AccessDenied from '@/components/access-denied';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
@@ -18,8 +20,12 @@ import { toast } from 'sonner';
 
 export default function RefereeConsole() {
   const { matchId } = useParams();
+  const { profile } = useAuth();
   const [match, setMatch] = useState(null);
   const [loading, setLoading] = useState(true);
+
+  const canScore =
+    profile?.role === 'referee' || profile?.role === 'super_admin';
 
   useEffect(() => {
     const unsub = onSnapshot(doc(db, 'matches', matchId), (s) => {
@@ -32,6 +38,14 @@ export default function RefereeConsole() {
 
   if (loading) return <Protected><div className="min-h-screen flex items-center justify-center"><Loader2 className="h-7 w-7 animate-spin text-primary" /></div></Protected>;
   if (!match) return <Protected><div className="min-h-screen flex items-center justify-center text-muted-foreground">Match not found.</div></Protected>;
+
+  if (!canScore) {
+    return (
+      <Protected>
+        <AccessDenied resource="the referee scoring console" />
+      </Protected>
+    );
+  }
 
   const meta = MATCH_STATUS_META[match.status] || MATCH_STATUS_META.queued;
 

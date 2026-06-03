@@ -14,8 +14,8 @@ export default function ApplyForRoleButton() {
   const [loading, setLoading] = useState(false);
   const [submitted, setSubmitted] = useState(false);
 
-  // Only show for spectators
-  if (profile?.role !== 'spectator') {
+  // Spectators only; hide if sensei onboarding already elevated the account
+  if (profile?.role !== 'spectator' || profile?.onboardedRoleSelection === 'sensei') {
     return null;
   }
 
