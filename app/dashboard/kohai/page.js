@@ -47,15 +47,21 @@ export default function KohaiPage() {
     if (profile?.role === 'super_admin') {
       // Super admin sees all athletes
       q = query(collection(db, 'athletes'), orderBy('createdAt', 'desc'));
-    } else if (profile?.role === 'dojo_admin' || profile?.role === 'tournament_organizer') {
-      // Dojo admin and tournament organizer see only their own athletes
+    } else if (profile?.role === 'dojo_admin') {
+      // Dojo admin sees athletes belonging to their owned dojos
+      if (ownedDojoIds.size === 0) {
+        setAthletes([]);
+        setLoading(false);
+        return;
+      }
+      const dojoIdsArray = Array.from(ownedDojoIds);
       q = query(
         collection(db, 'athletes'),
-        where('ownerId', '==', user.uid),
+        where('dojoId', 'in', dojoIdsArray),
         orderBy('createdAt', 'desc')
       );
     } else {
-      // Other roles (coach, spectator, etc.) see no athletes or handle as needed
+      // Tournament organizers, coaches, etc. see only their own registered athletes
       q = query(
         collection(db, 'athletes'),
         where('ownerId', '==', user.uid),
@@ -68,9 +74,23 @@ export default function KohaiPage() {
       setLoading(false);
     }, () => setLoading(false));
     return () => unsub();
-  }, [user, profile]);
+  }, [user, profile, ownedDojoIds]);
+
+  const canModifyAthlete = (a) => {
+    if (profile?.role === 'super_admin') return true;
+    if (user?.uid === a.ownerId) return true;
+    if (profile?.role === 'dojo_admin' && ownedDojoIds.has(a.dojoId)) return true;
+    return false;
+  };
 
   const filtered = athletes
+    .filter((a) => {
+      // Extra safety filter in case dojo_admin is active
+      if (profile?.role === 'dojo_admin') {
+        return ownedDojoIds.has(a.dojoId);
+      }
+      return true;
+    })
     .filter((a) => {
       if (a.status === 'pending_approval') {
         const isOwner = a.ownerId === user?.uid;
@@ -82,10 +102,18 @@ export default function KohaiPage() {
     })
     .filter((a) => [a.fullName, a.dojoName, a.belt].join(' ').toLowerCase().includes(search.toLowerCase()));
 
-  const remove = async (id, name) => {
-    if (!confirm(`Remove kohai "${name}"?`)) return;
-    try { await deleteDoc(doc(db, 'athletes', id)); toast.success('Kohai removed'); }
-    catch (e) { toast.error(e.message); }
+  const remove = async (athlete) => {
+    if (!canModifyAthlete(athlete)) {
+      toast.error('Access Denied. You do not have permission to delete this competitor.');
+      return;
+    }
+    if (!confirm(`Remove kohai "${athlete.fullName}"?`)) return;
+    try { 
+      await deleteDoc(doc(db, 'athletes', athlete.id)); 
+      toast.success('Kohai removed'); 
+    } catch (e) { 
+      toast.error(e.message); 
+    }
   };
 
   return (
@@ -167,11 +195,13 @@ export default function KohaiPage() {
                       <TableCell className="text-muted-foreground">{formatDate(a.dateOfBirth)}</TableCell>
                       <TableCell className="text-muted-foreground">{a.weight ? `${a.weight} kg` : '—'}</TableCell>
                       <TableCell className="text-right">
-                        {profile?.role !== 'spectator' && (
+                        {profile?.role !== 'spectator' && canModifyAthlete(a) ? (
                           <>
                             <Button asChild size="sm" variant="ghost"><Link href={`/dashboard/kohai/${a.id}`}><Pencil className="h-3.5 w-3.5" /></Link></Button>
-                            <Button size="sm" variant="ghost" onClick={() => remove(a.id, a.fullName)}><Trash2 className="h-3.5 w-3.5 text-destructive" /></Button>
+                            <Button size="sm" variant="ghost" onClick={() => remove(a)}><Trash2 className="h-3.5 w-3.5 text-destructive" /></Button>
                           </>
+                        ) : (
+                          <span className="text-zinc-600 text-xs">—</span>
                         )}
                       </TableCell>
                     </TableRow>

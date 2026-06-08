@@ -18,12 +18,13 @@ import {
   filterDisplayedRegistrations,
   tournamentRequiresApproval,
 } from '@/lib/tournament-registrations';
-import { Pencil, ExternalLink, Calendar, MapPin, FileText, Trophy, Copy, Grid3x3, Users, Plus, Tags, Trash2, Zap, Award } from 'lucide-react';
+import { Pencil, ExternalLink, Calendar, MapPin, FileText, Trophy, Copy, Grid3x3, Users, Plus, Tags, Trash2, Zap, Award, Building2 } from 'lucide-react';
 import { toast } from 'sonner';
-import { formatDate, statusColor, statusLabel } from '@/lib/utils';
-import { beltClass } from '@/lib/constants';
+import { formatDate, statusColor, statusLabel, cn } from '@/lib/utils';
+import { beltClass, isSpectator } from '@/lib/constants';
 import { useAuth } from '@/lib/auth-context';
 import permissions from '@/lib/permissions';
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from '@/components/ui/dialog';
 export default function TournamentDetailPage() {
   const { id } = useParams();
   const { user, profile } = useAuth();
@@ -35,6 +36,8 @@ export default function TournamentDetailPage() {
   const [regOpen, setRegOpen] = useState(false);
   const [participateOpen, setParticipateOpen] = useState(false);
   const [myDojo, setMyDojo] = useState(null);
+  const [dojosListOpen, setDojosListOpen] = useState(false);
+  const [categoriesListOpen, setCategoriesListOpen] = useState(false);
 
   useEffect(() => {
     if (!user?.uid) return;
@@ -127,10 +130,14 @@ export default function TournamentDetailPage() {
   }
   
   const canEdit = permissions.canEditTournament(profile?.uid, profile?.role, t);
+  const spectatorViewOnly = isSpectator(profile?.role);
   const requiresApproval = tournamentRequiresApproval(t);
+  const categoryStatLink = spectatorViewOnly ? null : `/dashboard/tournaments/${id}/setup/categories`;
+  const tatamiStatLink = spectatorViewOnly ? null : `/dashboard/tournaments/${id}/setup/tatamis`;
   const displayedRegistrations = filterDisplayedRegistrations(registrations).filter(
     (r) => r.status !== 'rejected'
   );
+  const participatingDojos = Array.from(new Set(displayedRegistrations.map((r) => r.dojoName).filter(Boolean)));
 
   return (
     <>
@@ -141,25 +148,29 @@ export default function TournamentDetailPage() {
           <>
             <Button variant="outline" onClick={copy}><Copy className="h-4 w-4 mr-2" /> Copy public link</Button>
             <Button asChild variant="outline"><Link href={`/t/${id}`} target="_blank"><ExternalLink className="h-4 w-4 mr-2" /> Public Page</Link></Button>
-            <Button asChild variant="outline" className="border-amber-500/40 text-amber-300 hover:bg-amber-500/10 hover:text-amber-200"><Link href={`/dashboard/tournaments/${id}/certificates`}><Award className="h-4 w-4 mr-2" /> Certificates</Link></Button>
-            <Button asChild className="bg-red-600 hover:bg-red-700 text-white"><Link href={`/dashboard/tournaments/${id}/live`}><Zap className="h-4 w-4 mr-2" /> Live Operations</Link></Button>
-            {canEdit && t.status === 'registration_open' && (
-              <Button onClick={handleToggleRegistration} variant="outline" className="border-red-500/40 text-red-300 hover:bg-red-500/10 hover:text-red-200">
-                Close Registration
-              </Button>
-            )}
-            {canEdit && t.status === 'registration_closed' && (
-              <Button onClick={handleToggleRegistration} variant="outline" className="border-emerald-500/40 text-emerald-300 hover:bg-emerald-500/10 hover:text-emerald-200">
-                Open Registration
-              </Button>
-            )}
-            {canEdit && (
-              <Button asChild variant="outline">
-                <Link href={`/dashboard/tournaments/${id}/edit`}>
-                  <Pencil className="h-4 w-4 mr-2" />
-                  Edit
-                </Link>
-              </Button>
+            {!spectatorViewOnly && (
+              <>
+                <Button asChild variant="outline" className="border-amber-500/40 text-amber-300 hover:bg-amber-500/10 hover:text-amber-200"><Link href={`/dashboard/tournaments/${id}/certificates`}><Award className="h-4 w-4 mr-2" /> Certificates</Link></Button>
+                <Button asChild className="bg-red-600 hover:bg-red-700 text-white"><Link href={`/dashboard/tournaments/${id}/live`}><Zap className="h-4 w-4 mr-2" /> Live Operations</Link></Button>
+                {canEdit && t.status === 'registration_open' && (
+                  <Button onClick={handleToggleRegistration} variant="outline" className="border-red-500/40 text-red-300 hover:bg-red-500/10 hover:text-red-200">
+                    Close Registration
+                  </Button>
+                )}
+                {canEdit && t.status === 'registration_closed' && (
+                  <Button onClick={handleToggleRegistration} variant="outline" className="border-emerald-500/40 text-emerald-300 hover:bg-emerald-500/10 hover:text-emerald-200">
+                    Open Registration
+                  </Button>
+                )}
+                {canEdit && (
+                  <Button asChild variant="outline">
+                    <Link href={`/dashboard/tournaments/${id}/edit`}>
+                      <Pencil className="h-4 w-4 mr-2" />
+                      Edit
+                    </Link>
+                  </Button>
+                )}
+              </>
             )}
           </>
         }
@@ -189,14 +200,47 @@ export default function TournamentDetailPage() {
         </CardContent>
       </Card>
 
-      <div className="grid lg:grid-cols-4 gap-4 mb-6">
-        <Stat icon={Users} label="Registrations" value={displayedRegistrations.length} />
-        <Stat icon={Tags} label="Categories" value={categories.length} link={`/dashboard/tournaments/${id}/setup/categories`} />
-        <Stat icon={Grid3x3} label="Tatamis" value={tatamis.length} link={`/dashboard/tournaments/${id}/setup/tatamis`} />
-        <Stat icon={Calendar} label="Reg. Deadline" valueText={formatDate(t.registrationDeadline)} />
+      <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-5 gap-4 mb-6">
+        <Stat 
+          icon={MapPin} 
+          label="Location" 
+          valueText={`${t.city || '—'}, ${t.country || '—'}`} 
+          subtitle={t.venue || '—'} 
+        />
+        <Stat 
+          icon={Building2} 
+          label="Participating Dojos" 
+          value={participatingDojos.length} 
+          onClick={() => setDojosListOpen(true)} 
+        />
+        <Stat 
+          icon={Users} 
+          label="Kohais Participating" 
+          value={displayedRegistrations.length} 
+        />
+        <Stat 
+          icon={Tags} 
+          label="Categories" 
+          value={categories.length} 
+          onClick={() => setCategoriesListOpen(true)} 
+        />
+        <Stat 
+          icon={Grid3x3} 
+          label="Tatamis" 
+          value={tatamis.length} 
+          link={`/dashboard/tatamis?tournamentId=${id}`} 
+        />
       </div>
 
-      {requiresApproval && canManageRegistrations && (
+      {spectatorViewOnly && (
+        <Card className="border-purple-500/40 bg-purple-500/5 mb-6">
+          <CardContent className="p-4 text-sm text-purple-200">
+            You have <strong>view-only</strong> access. Use the public tournament page to follow brackets and live results.
+          </CardContent>
+        </Card>
+      )}
+
+      {requiresApproval && canManageRegistrations && !spectatorViewOnly && (
         <div className="mb-6">
           <OrganizerApprovalDashboard tournamentId={id} tournamentName={t.name} />
         </div>
@@ -211,13 +255,13 @@ export default function TournamentDetailPage() {
               <p className="text-xs text-muted-foreground mt-0.5">{displayedRegistrations.length} kohai registered to this tournament</p>
             </div>
             <div className="flex gap-2">
-              {canManageRegistrations && (
+              {!spectatorViewOnly && canManageRegistrations && (
                 <Button onClick={() => setRegOpen(true)} className="bg-primary hover:bg-primary/90">
                   <Plus className="h-4 w-4 mr-2" /> 
                   {t.status === 'registration_closed' ? 'Spot Registration' : 'Add Registration'}
                 </Button>
               )}
-              {profile?.role === 'dojo_admin' && t.status === 'registration_open' && (
+              {!spectatorViewOnly && profile?.role === 'dojo_admin' && t.status === 'registration_open' && (
                 <Button onClick={() => setParticipateOpen(true)} className="bg-primary hover:bg-primary/90">
                   <Users className="h-4 w-4 mr-2" /> Participate in Tournament
                 </Button>
@@ -235,7 +279,7 @@ export default function TournamentDetailPage() {
                   <TableHead>Belt</TableHead>
                   <TableHead>Category</TableHead>
                   <TableHead>Status</TableHead>
-                  {(canManageRegistrations || profile?.role === 'dojo_admin') && <TableHead className="text-right">—</TableHead>}
+                  {!spectatorViewOnly && (canManageRegistrations || profile?.role === 'dojo_admin') && <TableHead className="text-right">—</TableHead>}
                 </TableRow></TableHeader>
                 <TableBody>
                   {displayedRegistrations.map((r) => (
@@ -261,7 +305,7 @@ export default function TournamentDetailPage() {
                           {r.status || 'approved'}
                         </Badge>
                       </TableCell>
-                      {(canManageRegistrations || profile?.role === 'dojo_admin') && (
+                      {!spectatorViewOnly && (canManageRegistrations || profile?.role === 'dojo_admin') && (
                         <TableCell className="text-right">
                           {canDeleteRow(r) ? (
                             <Button size="sm" variant="ghost" onClick={() => removeReg(r.id, r.athleteName, r.dojoId)}>
@@ -307,21 +351,117 @@ export default function TournamentDetailPage() {
 
       <RegistrationDialog open={regOpen} onOpenChange={setRegOpen} tournament={t} />
       <ParticipateTournamentDialog open={participateOpen} onOpenChange={setParticipateOpen} tournament={t} />
+
+      {/* Dojo List Modal */}
+      <Dialog open={dojosListOpen} onOpenChange={setDojosListOpen}>
+        <DialogContent className="max-w-md bg-zinc-950 border-zinc-800 text-zinc-100">
+          <DialogHeader>
+            <DialogTitle className="text-xl font-bold text-zinc-100">Participating Dojos</DialogTitle>
+            <DialogDescription className="text-zinc-400 text-xs mt-1">
+              List of dojos participating in {t.name}
+            </DialogDescription>
+          </DialogHeader>
+          <div className="mt-4 max-h-[350px] overflow-y-auto space-y-2 pr-1">
+            {participatingDojos.length === 0 ? (
+              <div className="text-center text-sm text-zinc-500 py-6">No Dojos registered yet.</div>
+            ) : (
+              participatingDojos.map((dojoName, index) => (
+                <div 
+                  key={index}
+                  className="flex items-center gap-3 p-3 rounded-xl border border-zinc-900 bg-zinc-900/30 hover:border-zinc-800 transition"
+                >
+                  <div className="h-8 w-8 rounded-lg bg-zinc-800 flex items-center justify-center text-xs font-bold text-zinc-300">
+                    {index + 1}
+                  </div>
+                  <div className="font-semibold text-sm text-zinc-200">{dojoName}</div>
+                </div>
+              ))
+            )}
+          </div>
+        </DialogContent>
+      </Dialog>
+
+      {/* Categories List Modal */}
+      <Dialog open={categoriesListOpen} onOpenChange={setCategoriesListOpen}>
+        <DialogContent className="max-w-lg bg-zinc-950 border-zinc-800 text-zinc-100">
+          <DialogHeader>
+            <DialogTitle className="text-xl font-bold text-zinc-100">Tournament Event Categories</DialogTitle>
+            <DialogDescription className="text-zinc-400 text-xs mt-1">
+              Event categories configured for {t.name}
+            </DialogDescription>
+          </DialogHeader>
+          <div className="mt-4 max-h-[380px] overflow-y-auto space-y-3 pr-1">
+            {categories.length === 0 ? (
+              <div className="text-center text-sm text-zinc-500 py-6">No event categories created yet.</div>
+            ) : (
+              categories.map((c) => (
+                <div 
+                  key={c.id} 
+                  className="p-4 rounded-xl border border-zinc-900 bg-zinc-900/30 hover:border-zinc-800 transition space-y-2.5"
+                >
+                  <div className="flex items-center justify-between">
+                    <h4 className="font-bold text-sm text-zinc-200">{c.name}</h4>
+                    <div className="flex gap-1.5">
+                      <Badge variant="outline" className="text-[10px] bg-primary/10 text-primary border-primary/40">
+                        {c.eventType}
+                      </Badge>
+                      {c.isTeamEvent && (
+                        <Badge variant="outline" className="text-[10px] bg-purple-500/15 text-purple-300 border-purple-500/40">
+                          Team
+                        </Badge>
+                      )}
+                    </div>
+                  </div>
+                  <div className="flex flex-wrap gap-1.5 text-xs text-zinc-400">
+                    <span className="bg-zinc-900 px-2 py-0.5 rounded border border-zinc-850">
+                      Gender: {c.gender}
+                    </span>
+                    {(c.ageMin != null) && (
+                      <span className="bg-zinc-900 px-2 py-0.5 rounded border border-zinc-850">
+                        Age: {c.ageMin}–{c.ageMax}
+                      </span>
+                    )}
+                    {(c.weightMin != null || c.weightMax != null) && (
+                      <span className="bg-zinc-900 px-2 py-0.5 rounded border border-zinc-850">
+                        Weight: {c.weightMin ?? '?'}–{c.weightMax ?? '?'} kg
+                      </span>
+                    )}
+                    <span className="bg-zinc-900 px-2 py-0.5 rounded border border-zinc-850 text-zinc-300">
+                      {displayedRegistrations.filter((r) => r.categoryId === c.id).length} registered
+                    </span>
+                  </div>
+                </div>
+              ))
+            )}
+          </div>
+        </DialogContent>
+      </Dialog>
     </>
   );
 }
 
-function Stat({ icon: Icon, label, value, valueText, link }) {
+function Stat({ icon: Icon, label, value, valueText, subtitle, link, onClick }) {
   const inner = (
-    <Card className="border-border/60 hover:border-primary/40 transition"><CardContent className="p-5">
-      <div className="flex items-center gap-3">
-        <div className="h-10 w-10 rounded-md bg-primary/10 flex items-center justify-center"><Icon className="h-5 w-5 text-primary" /></div>
-        <div className="min-w-0">
-          {valueText ? <div className="text-sm font-bold truncate">{valueText}</div> : <div className="text-2xl font-bold">{value}</div>}
-          <div className="text-xs text-muted-foreground uppercase tracking-wider truncate">{label}</div>
+    <Card 
+      onClick={onClick}
+      className={cn(
+        "border-border/60 transition",
+        (link || onClick) ? "hover:border-primary/40 cursor-pointer hover:bg-zinc-900/40" : ""
+      )}
+    >
+      <CardContent className="p-5">
+        <div className="flex items-center gap-3">
+          <div className="h-10 w-10 rounded-md bg-primary/10 flex items-center justify-center shrink-0">
+            <Icon className="h-5 w-5 text-primary" />
+          </div>
+          <div className="min-w-0 flex-1">
+            {valueText ? <div className="text-sm font-bold truncate">{valueText}</div> : <div className="text-2xl font-bold">{value}</div>}
+            <div className="text-xs text-muted-foreground uppercase tracking-wider truncate">{label}</div>
+            {subtitle && <div className="text-[10px] text-muted-foreground truncate mt-0.5" title={subtitle}>{subtitle}</div>}
+          </div>
         </div>
-      </div>
-    </CardContent></Card>
+      </CardContent>
+    </Card>
   );
   return link ? <Link href={link}>{inner}</Link> : inner;
 }

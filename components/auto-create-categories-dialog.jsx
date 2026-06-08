@@ -10,11 +10,11 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, Di
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Checkbox } from '@/components/ui/checkbox';
 import { Loader2, Wand2 } from 'lucide-react';
-import { STANDARD_AGE_DIVISIONS, STANDARD_WEIGHT_DIVISIONS } from '@/lib/constants';
+import { STANDARD_AGE_DIVISIONS, STANDARD_WEIGHT_DIVISIONS, canManageCategories } from '@/lib/constants';
 import { toast } from 'sonner';
 
 export default function AutoCreateCategoriesDialog({ open, onOpenChange, tournaments, lockedTournamentId }) {
-  const { user } = useAuth();
+  const { user, profile } = useAuth();
   const [busy, setBusy] = useState(false);
   const [tournamentId, setTournamentId] = useState(lockedTournamentId || '');
   const [events, setEvents] = useState({ Kata: true, Kumite: true, TeamKata: false, TeamKumite: false });
@@ -31,6 +31,9 @@ export default function AutoCreateCategoriesDialog({ open, onOpenChange, tournam
   }, [lockedTournamentId]);
 
   const create = async () => {
+    if (!canManageCategories(profile?.role)) {
+      return toast.error('View-only: you cannot create event categories');
+    }
     if (!tournamentId) return toast.error('Select a tournament');
     if (!createByAge && !createByWeight) {
       return toast.error('Please check at least "Create event by age" or "Create event by weight".');

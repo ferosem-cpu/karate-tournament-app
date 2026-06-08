@@ -37,7 +37,7 @@ export default function SpectatorOnboarding({ onComplete }) {
   const { user, profile } = useAuth();
   
   // Selection or specific wizards
-  const [step, setStep] = useState('selection'); // 'selection' | 'sensei_dojo' | 'sensei_kohai' | 'student' | 'student_submitted'
+  const [step, setStep] = useState('selection'); // 'selection' | 'spectator_register' | 'sensei_dojo' | ...
   const [busy, setBusy] = useState(false);
   const [progress, setProgress] = useState(0);
 
@@ -85,6 +85,13 @@ export default function SpectatorOnboarding({ onComplete }) {
     proofOfAgeUrl: '',
     proofOfAgeFileName: '',
     emergencyContactEmail: '',
+  });
+
+  const [spectatorForm, setSpectatorForm] = useState({
+    fullName: profile?.displayName || user?.displayName || '',
+    email: profile?.email || user?.email || '',
+    city: profile?.city || '',
+    country: profile?.country || 'India',
   });
 
   // Logo & Proof input refs
@@ -334,20 +341,36 @@ export default function SpectatorOnboarding({ onComplete }) {
     }
   };
 
-  // Visitor Onboarding: Upgrade Profile to Spectator
-  const submitVisitor = async () => {
+  const handleSpectatorFormChange = (k, v) => setSpectatorForm((f) => ({ ...f, [k]: v }));
+
+  // Spectator registration: full name, email, city, country
+  const submitSpectatorRegistration = async (e) => {
+    e?.preventDefault?.();
+    if (!spectatorForm.fullName.trim()) return toast.error('Full name is required');
+    if (!spectatorForm.email.trim()) return toast.error('Email is required');
+    if (!spectatorForm.city.trim()) return toast.error('City is required');
+    if (!spectatorForm.country.trim()) return toast.error('Country is required');
+
     setBusy(true);
     try {
       const userRef = doc(db, 'users', user.uid);
-      await setDoc(userRef, {
-        role: 'spectator',
-        onboardedRoleSelection: 'spectator',
-        updatedAt: serverTimestamp(),
-      }, { merge: true });
-      toast.success('Profile onboarded as Visitor (Spectator).');
+      await setDoc(
+        userRef,
+        {
+          role: 'spectator',
+          displayName: spectatorForm.fullName.trim(),
+          email: spectatorForm.email.trim().toLowerCase(),
+          city: spectatorForm.city.trim(),
+          country: spectatorForm.country.trim(),
+          onboardedRoleSelection: 'spectator',
+          updatedAt: serverTimestamp(),
+        },
+        { merge: true }
+      );
+      toast.success('Spectator registration complete. Welcome to Tournament Hub!');
       onComplete();
     } catch (err) {
-      toast.error(`Onboarding failed: ${err.message}`);
+      toast.error(`Registration failed: ${err.message}`);
     } finally {
       setBusy(false);
     }
@@ -405,9 +428,9 @@ export default function SpectatorOnboarding({ onComplete }) {
           </Card>
 
           {/* Card 3: Spectator */}
-          <Card 
+          <Card
             className="border-zinc-800 bg-zinc-950/80 hover:border-zinc-700 transition duration-300 transform hover:-translate-y-1 cursor-pointer flex flex-col justify-between"
-            onClick={submitVisitor}
+            onClick={() => setStep('spectator_register')}
           >
             <CardContent className="p-6 text-center space-y-4">
               <div className="h-16 w-16 mx-auto rounded-xl bg-purple-500/10 flex items-center justify-center border border-purple-500/20">
@@ -415,14 +438,80 @@ export default function SpectatorOnboarding({ onComplete }) {
               </div>
               <div className="space-y-1">
                 <h3 className="text-lg font-bold text-white">I am a Spectator</h3>
-                <p className="text-xs text-zinc-400">View tournament overviews, dynamic brackets, live match operations, and scoreboards.</p>
+                <p className="text-xs text-zinc-400">View tournament overviews, brackets, and scoreboards. Register with your name, email, and location.</p>
               </div>
-              <Button className="w-full bg-zinc-900 border border-zinc-800 text-zinc-300 hover:bg-zinc-800 mt-2 text-xs" disabled={busy}>
-                {busy ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <>Explore Hub <ArrowRight className="h-3.5 w-3.5 ml-1.5" /></>}
+              <Button className="w-full bg-zinc-900 border border-zinc-800 text-zinc-300 hover:bg-zinc-800 mt-2 text-xs">
+                Register <ArrowRight className="h-3.5 w-3.5 ml-1.5" />
               </Button>
             </CardContent>
           </Card>
         </div>
+      </div>
+    );
+  }
+
+  // ---------------- SPECTATOR REGISTRATION ----------------
+  if (step === 'spectator_register') {
+    return (
+      <div className="max-w-lg w-full mx-auto bg-zinc-950/90 border border-zinc-800 rounded-xl overflow-hidden shadow-2xl p-6 md:p-8">
+        <div className="flex items-center gap-2 text-zinc-400 text-xs mb-4">
+          <Button variant="ghost" size="sm" className="p-0 h-auto text-zinc-400 hover:text-white" onClick={() => setStep('selection')}>
+            <ArrowLeft className="h-3.5 w-3.5 mr-1" /> Back
+          </Button>
+          <span>· Spectator registration</span>
+        </div>
+
+        <div className="mb-6">
+          <h2 className="text-2xl font-black text-white">Spectator Registration</h2>
+          <p className="text-xs text-zinc-400 mt-1">View-only access to tournaments, brackets, and live scoreboards.</p>
+        </div>
+
+        <form onSubmit={submitSpectatorRegistration} className="space-y-4">
+          <div className="space-y-1">
+            <Label className="text-xs text-zinc-400">Full Name *</Label>
+            <Input
+              value={spectatorForm.fullName}
+              onChange={(e) => handleSpectatorFormChange('fullName', e.target.value)}
+              placeholder="Your full name"
+              required
+            />
+          </div>
+          <div className="space-y-1">
+            <Label className="text-xs text-zinc-400">Email ID *</Label>
+            <Input
+              type="email"
+              value={spectatorForm.email}
+              onChange={(e) => handleSpectatorFormChange('email', e.target.value)}
+              placeholder="you@example.com"
+              required
+            />
+          </div>
+          <div className="grid sm:grid-cols-2 gap-3">
+            <div className="space-y-1">
+              <Label className="text-xs text-zinc-400">City *</Label>
+              <Input
+                value={spectatorForm.city}
+                onChange={(e) => handleSpectatorFormChange('city', e.target.value)}
+                placeholder="Mumbai"
+                required
+              />
+            </div>
+            <div className="space-y-1">
+              <Label className="text-xs text-zinc-400">Country *</Label>
+              <Input
+                value={spectatorForm.country}
+                onChange={(e) => handleSpectatorFormChange('country', e.target.value)}
+                placeholder="India"
+                required
+              />
+            </div>
+          </div>
+
+          <Button type="submit" disabled={busy} className="w-full bg-purple-600 hover:bg-purple-700 text-white font-bold mt-2">
+            {busy ? <Loader2 className="h-4 w-4 animate-spin mr-2" /> : <Eye className="h-4 w-4 mr-2" />}
+            Complete Registration
+          </Button>
+        </form>
       </div>
     );
   }

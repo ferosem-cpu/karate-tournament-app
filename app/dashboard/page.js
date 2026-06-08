@@ -21,7 +21,7 @@ export default function DashboardPage() {
 
   const role = profile?.role || 'spectator';
   const canCreateTournament = isAdminOrOrganizer(role);
-  const showRefereeApplication = role !== 'referee' && role !== 'super_admin';
+  const showRefereeApplication = role !== 'referee' && role !== 'super_admin' && role !== 'spectator' && role !== 'dojo_admin';
 
   useEffect(() => {
     if (!user) return;

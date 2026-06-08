@@ -12,8 +12,8 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import PageHeader from '@/components/page-header';
 import TatamiFormDialog from '@/components/tatami-form-dialog';
 import AutoCreateTatamisDialog from '@/components/auto-create-tatamis-dialog';
-import { Plus, Grid3x3, Pencil, Trash2, User, Activity, Pause, Lock, ExternalLink, Wand2 } from 'lucide-react';
-import { isAdminOrOrganizer } from '@/lib/constants';
+import { Plus, Grid3x3, Pencil, Trash2, User, Activity, Pause, Lock, ExternalLink, Wand2, Video } from 'lucide-react';
+import { canManageTatamis } from '@/lib/constants';
 import { toast } from 'sonner';
 
 const STATUS_META = {
@@ -25,7 +25,7 @@ const STATUS_META = {
 
 export default function TatamisPage() {
   const { profile } = useAuth();
-  const canManage = isAdminOrOrganizer(profile?.role);
+  const canManage = canManageTatamis(profile?.role);
   const [tatamis, setTatamis] = useState([]);
   const [tournaments, setTournaments] = useState([]);
   const [loading, setLoading] = useState(true);
@@ -37,6 +37,15 @@ export default function TatamisPage() {
   useEffect(() => {
     const u1 = onSnapshot(query(collection(db, 'tatamis'), orderBy('createdAt', 'desc')), (s) => { setTatamis(s.docs.map((d) => ({ id: d.id, ...d.data() }))); setLoading(false); }, () => setLoading(false));
     const u2 = onSnapshot(collection(db, 'tournaments'), (s) => setTournaments(s.docs.map((d) => ({ id: d.id, ...d.data() }))));
+    
+    if (typeof window !== 'undefined') {
+      const params = new URLSearchParams(window.location.search);
+      const tid = params.get('tournamentId');
+      if (tid) {
+        setTournamentFilter(tid);
+      }
+    }
+
     return () => { u1(); u2(); };
   }, []);
 
@@ -66,6 +75,15 @@ export default function TatamisPage() {
           <Badge variant="outline" className="px-3 py-1.5"><Lock className="h-3 w-3 mr-1" /> View-only access</Badge>
         )}
       />
+
+      {!canManage && (
+        <Card className="border-amber-500/40 bg-amber-500/5 mb-5">
+          <CardContent className="p-3 flex items-center gap-2 text-sm text-amber-200">
+            <Lock className="h-4 w-4 shrink-0" />
+            <span>You have <strong>view-only</strong> access. Only tournament organizers can create, edit, or delete tatamis.</span>
+          </CardContent>
+        </Card>
+      )}
 
       <div className="mb-5">
         <Select value={tournamentFilter} onValueChange={setTournamentFilter}>
@@ -102,10 +120,35 @@ export default function TatamisPage() {
                       <Badge variant="outline" className={`${meta.cls} text-[10px]`}><SIcon className="h-3 w-3 mr-1" />{meta.label}</Badge>
                     </div>
                     <div className="text-xs text-muted-foreground mt-3 flex items-center gap-1.5"><User className="h-3 w-3" /> {t.assignedRefereeName || 'Unassigned'}</div>
-                    {t.notes && <p className="text-xs text-muted-foreground mt-1">{t.notes}</p>}
-                    <div className="flex gap-2 mt-4">
-                      <Button asChild size="sm" variant="outline" className="flex-1 border-primary/40 text-primary hover:bg-primary/10"><Link href={`/tatami/${t.id}`} target="_blank"><ExternalLink className="h-3.5 w-3.5 mr-1" /> Live Screen</Link></Button>
-                      {canManage && <><Button size="sm" variant="ghost" onClick={() => openEdit(t)}><Pencil className="h-3.5 w-3.5" /></Button><Button size="sm" variant="ghost" onClick={() => remove(t.id, t.name)}><Trash2 className="h-3.5 w-3.5 text-destructive" /></Button></>}
+                    {t.notes && <p className="text-xs text-muted-foreground mt-1 text-ellipsis overflow-hidden whitespace-nowrap">{t.notes}</p>}
+                    {t.streamingUrl && (
+                      <div className="text-[10px] text-rose-400 mt-2 flex items-center gap-1">
+                        <Video className="h-3 w-3 text-rose-500 animate-pulse" /> Live stream configured
+                      </div>
+                    )}
+                    <div className="flex flex-col gap-2 mt-4">
+                      <div className="flex gap-2 w-full">
+                        <Button asChild size="sm" variant="outline" className="flex-1 border-primary/40 text-primary hover:bg-primary/10">
+                          <Link href={`/tatami/${t.id}`} target="_blank">
+                            <ExternalLink className="h-3.5 w-3.5 mr-1" /> Live Screen
+                          </Link>
+                        </Button>
+                        <Button asChild size="sm" variant="outline" className={t.streamingUrl ? "flex-1 border-rose-500/40 text-rose-400 hover:bg-rose-500/10 hover:text-rose-300" : "flex-1 border-zinc-800 text-zinc-500 hover:bg-zinc-900"}>
+                          <a href={t.streamingUrl || "https://www.youtube.com/live"} target="_blank" rel="noopener noreferrer">
+                            <Video className="h-3.5 w-3.5 mr-1" /> {t.streamingUrl ? 'Watch Stream' : 'Demo Stream'}
+                          </a>
+                        </Button>
+                      </div>
+                      {canManage && (
+                        <div className="flex gap-2 justify-end w-full border-t border-zinc-900 pt-2">
+                          <Button size="sm" variant="outline" onClick={() => openEdit(t)} className="flex-1 text-xs text-zinc-300 hover:bg-zinc-800">
+                            <Pencil className="h-3.5 w-3.5 mr-1" /> Edit
+                          </Button>
+                          <Button size="sm" variant="ghost" onClick={() => remove(t.id, t.name)} className="text-destructive hover:bg-destructive/10 text-xs flex-1">
+                            <Trash2 className="h-3.5 w-3.5 mr-1" /> Delete
+                          </Button>
+                        </div>
+                      )}
                     </div>
                   </CardContent>
                 </Card>

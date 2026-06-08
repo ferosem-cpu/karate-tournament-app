@@ -10,6 +10,7 @@ import { Label } from '@/components/ui/label';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter } from '@/components/ui/dialog';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { toast } from 'sonner';
+import { canManageTatamis } from '@/lib/constants';
 import { Loader2 } from 'lucide-react';
 
 const STATUSES = [
@@ -19,9 +20,9 @@ const STATUSES = [
 ];
 
 export default function TatamiFormDialog({ open, onOpenChange, tournaments, initial, id, lockedTournamentId }) {
-  const { user } = useAuth();
+  const { user, profile } = useAuth();
   const [busy, setBusy] = useState(false);
-  const [form, setForm] = useState({ name: '', tournamentId: '', tournamentName: '', status: 'active', assignedRefereeName: '', notes: '' });
+  const [form, setForm] = useState({ name: '', tournamentId: '', tournamentName: '', status: 'active', assignedRefereeName: '', notes: '', streamingUrl: '' });
 
   useEffect(() => {
     if (initial) setForm({
@@ -31,6 +32,7 @@ export default function TatamiFormDialog({ open, onOpenChange, tournaments, init
       status: initial.status || 'active',
       assignedRefereeName: initial.assignedRefereeName || '',
       notes: initial.notes || '',
+      streamingUrl: initial.streamingUrl || '',
     });
     else setForm({ 
       name: '', 
@@ -38,7 +40,8 @@ export default function TatamiFormDialog({ open, onOpenChange, tournaments, init
       tournamentName: tournaments.find((t) => t.id === lockedTournamentId)?.name || '', 
       status: 'active', 
       assignedRefereeName: '', 
-      notes: '' 
+      notes: '',
+      streamingUrl: '',
     });
   }, [initial, open, lockedTournamentId, tournaments]);
 
@@ -50,6 +53,9 @@ export default function TatamiFormDialog({ open, onOpenChange, tournaments, init
 
   const submit = async (e) => {
     e.preventDefault();
+    if (!canManageTatamis(profile?.role)) {
+      return toast.error('View-only: you cannot create or edit tatamis');
+    }
     if (!form.name.trim()) return toast.error('Tatami name is required');
     if (!form.tournamentId) return toast.error('Tournament is required \u2014 select one before creating a tatami');
     if (!form.assignedRefereeName.trim()) return toast.error('Assigned Referee is required');
@@ -98,6 +104,7 @@ export default function TatamiFormDialog({ open, onOpenChange, tournaments, init
             <F label="Assigned Referee *"><Input value={form.assignedRefereeName} onChange={(e) => set('assignedRefereeName', e.target.value)} required placeholder="Sensei name" /></F>
           </div>
           <F label="Notes"><Input value={form.notes} onChange={(e) => set('notes', e.target.value)} placeholder="Optional notes…" /></F>
+          <F label="Live Stream URL (Optional)"><Input type="url" value={form.streamingUrl || ''} onChange={(e) => set('streamingUrl', e.target.value)} placeholder="https://youtube.com/live/..." /></F>
           <DialogFooter>
             <Button type="button" variant="outline" onClick={() => onOpenChange(false)}>Cancel</Button>
             <Button type="submit" disabled={busy} className="bg-primary hover:bg-primary/90 min-w-[120px]">

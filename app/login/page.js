@@ -12,7 +12,7 @@ import { toast } from 'sonner';
 import { Loader2, Trophy, Mail, UserPlus, ShieldAlert } from 'lucide-react';
 
 export default function LoginPage() {
-  const { user, loading, signInEmail, signUpEmail, signInGoogle } = useAuth();
+  const { user, profile, loading, signInEmail, signUpEmail, signInGoogle } = useAuth();
   const router = useRouter();
   const [busy, setBusy] = useState(false);
   const [email, setEmail] = useState('');
@@ -20,8 +20,14 @@ export default function LoginPage() {
   const [name, setName] = useState('');
 
   useEffect(() => {
-    if (!loading && user) router.replace('/dashboard');
-  }, [user, loading, router]);
+    if (!loading && user) {
+      if (profile?.role === 'dojo_admin') {
+        router.replace('/dashboard/dojos');
+      } else {
+        router.replace('/dashboard');
+      }
+    }
+  }, [user, profile, loading, router]);
 
   const handleEmailLogin = async (e) => {
     e.preventDefault();
@@ -29,7 +35,6 @@ export default function LoginPage() {
     try {
       await signInEmail(email, password);
       toast.success('Welcome back!');
-      router.replace('/dashboard');
     } catch (err) {
       toast.error(err.message || 'Login failed');
     } finally {
@@ -43,7 +48,6 @@ export default function LoginPage() {
     try {
       await signUpEmail(email, password, name);
       toast.success('Account created!');
-      router.replace('/dashboard');
     } catch (err) {
       toast.error(err.message || 'Signup failed');
     } finally {
@@ -56,7 +60,6 @@ export default function LoginPage() {
     try {
       await signInGoogle();
       toast.success('Signed in with Google');
-      router.replace('/dashboard');
     } catch (err) {
       toast.error(err.message || 'Google sign-in failed');
     } finally {

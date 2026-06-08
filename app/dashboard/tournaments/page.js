@@ -11,12 +11,13 @@ import { Input } from '@/components/ui/input';
 import PageHeader from '@/components/page-header';
 import { Plus, Trophy, Search, Calendar, MapPin, ExternalLink } from 'lucide-react';
 import { useAuth } from '@/lib/auth-context';
-import { isAdminOrOrganizer } from '@/lib/constants';
+import { canManageTournaments, isSpectator } from '@/lib/constants';
 import { formatDate, statusColor, statusLabel } from '@/lib/utils';
 
 export default function TournamentsPage() {
   const { user, profile } = useAuth();
-  const canManage = isAdminOrOrganizer(profile?.role);
+  const canManage = canManageTournaments(profile?.role);
+  const spectatorView = isSpectator(profile?.role);
   const [tournaments, setTournaments] = useState([]);
   const [search, setSearch] = useState('');
   const [loading, setLoading] = useState(true);
@@ -46,7 +47,7 @@ export default function TournamentsPage() {
     <>
       <PageHeader
         title="Tournaments"
-        description="All tournaments managed on Kohai. Create, edit, and share public pages."
+        description={spectatorView ? 'Browse tournaments and public pages (view-only).' : 'All tournaments managed on Kohai. Create, edit, and share public pages.'}
         actions={
           canManage && (
             // Header Action Trigger - explicitly routes to tournament creation
@@ -111,11 +112,15 @@ export default function TournamentsPage() {
                 </div>
                 <div className="flex gap-2 mt-4">
                   <Button asChild size="sm" variant="outline" className="flex-1">
-                    <Link href={`/dashboard/tournaments/${t.id}`}>Manage</Link>
+                    <Link href={`/dashboard/tournaments/${t.id}`}>
+                      {spectatorView ? 'View Details' : 'Manage'}
+                    </Link>
                   </Button>
-                  <Button asChild size="sm" variant="ghost">
-                    <Link href={`/t/${t.id}`} target="_blank"><ExternalLink className="h-4 w-4" /></Link>
-                  </Button>
+                  {!spectatorView && (
+                    <Button asChild size="sm" variant="ghost">
+                      <Link href={`/t/${t.id}`} target="_blank"><ExternalLink className="h-4 w-4" /></Link>
+                    </Button>
+                  )}
                 </div>
               </CardContent>
             </Card>

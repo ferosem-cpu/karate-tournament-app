@@ -122,6 +122,7 @@ export default function KohaiForm({ initial, id }) {
     if (!form.fullName.trim()) return toast.error('Full name is required');
     if (!form.gender) return toast.error('Gender is required');
     if (!form.dateOfBirth) return toast.error('Date of birth is required');
+    if (!form.weight || form.weight === '') return toast.error('Weight is required');
     if (!form.dojoId) return toast.error(dojos.length === 0 ? NO_DOJO_MSG : 'Please select a registered dojo');
     if (!form.eventType) return toast.error('Event category is required');
     if (!form.proofOfAgeUrl) return toast.error('Proof of age document is required (PDF/JPG/PNG)');
@@ -205,7 +206,7 @@ export default function KohaiForm({ initial, id }) {
                 {age != null && <div className="mt-1 flex items-center gap-2"><Badge variant="outline" className="bg-primary/10 text-primary border-primary/40 text-[10px]">Age auto: {age} years</Badge></div>}
               </div>
             </Field>
-            <Field label="Weight (kg)"><Input type="number" step="0.1" value={form.weight} onChange={(e) => set('weight', e.target.value)} placeholder="65" /></Field>
+            <Field label="Weight (kg) *"><Input type="number" step="0.1" value={form.weight} onChange={(e) => set('weight', e.target.value)} required placeholder="65" /></Field>
           </div>
         </div>
       </CardContent></Card>

@@ -7,7 +7,8 @@ import {
   where, 
   onSnapshot, 
   doc, 
-  writeBatch 
+  writeBatch,
+  getDocs 
 } from 'firebase/firestore';
 import { db } from '@/lib/firebase';
 import { useAuth } from '@/lib/auth-context';
@@ -40,7 +41,7 @@ import {
 import { toast } from 'sonner';
 
 export default function RefereeApplicationReviewPanel() {
-  const { profile } = useAuth();
+  const { profile, user } = useAuth();
   const [applications, setApplications] = useState([]);
   const [loading, setLoading] = useState(true);
   const [processingId, setProcessingId] = useState(null);
@@ -49,32 +50,58 @@ export default function RefereeApplicationReviewPanel() {
   const isAuthorized = profile?.role === 'super_admin' || profile?.role === 'tournament_organizer';
 
   useEffect(() => {
-    if (!isAuthorized) {
+    if (!isAuthorized || !user?.uid) {
       setLoading(false);
       return;
     }
 
-    // Set up real-time listener for pending referee applications
-    const q = query(
-      collection(db, 'referee_applications'), 
-      where('status', '==', 'pending')
-    );
-    
-    const unsubscribe = onSnapshot(q, (snapshot) => {
-      const docs = snapshot.docs.map(docSnap => ({
-        id: docSnap.id,
-        ...docSnap.data()
-      }));
-      setApplications(docs);
-      setLoading(false);
-    }, (err) => {
-      console.error("Firestore loading error:", err);
-      toast.error("Failed to load applications list");
-      setLoading(false);
-    });
+    let unsubscribe = () => {};
+
+    const setupListener = async () => {
+      try {
+        let ownedTournamentIds = [];
+        if (profile?.role === 'tournament_organizer') {
+          const tQuery = query(collection(db, 'tournaments'), where('ownerId', '==', user.uid));
+          const tSnap = await getDocs(tQuery);
+          ownedTournamentIds = tSnap.docs.map(d => d.id);
+        }
+
+        const q = query(
+          collection(db, 'referee_applications'), 
+          where('status', '==', 'pending')
+        );
+
+        unsubscribe = onSnapshot(q, (snapshot) => {
+          const docs = snapshot.docs.map(docSnap => ({
+            id: docSnap.id,
+            ...docSnap.data()
+          }));
+
+          if (profile?.role === 'tournament_organizer') {
+            const filtered = docs.filter(app => app.tournamentId && ownedTournamentIds.includes(app.tournamentId));
+            setApplications(filtered);
+          } else if (profile?.role === 'super_admin') {
+            const filtered = docs.filter(app => !app.tournamentId);
+            setApplications(filtered);
+          } else {
+            setApplications([]);
+          }
+          setLoading(false);
+        }, (err) => {
+          console.error("Firestore loading error:", err);
+          toast.error("Failed to load applications list");
+          setLoading(false);
+        });
+      } catch (err) {
+        console.error("Error setting up referee applications listener:", err);
+        setLoading(false);
+      }
+    };
+
+    setupListener();
 
     return () => unsubscribe();
-  }, [isAuthorized]);
+  }, [isAuthorized, user, profile]);
 
   const handleReviewAction = async (app, targetStatus) => {
     if (!app || !app.id || !app.userId) {
@@ -167,6 +194,11 @@ export default function RefereeApplicationReviewPanel() {
                     <CardDescription className="text-xs">
                       Requested Belt Level: <b className="text-zinc-800 dark:text-zinc-200">{app.beltLevel || 'N/A'}</b>
                     </CardDescription>
+                    {app.tournamentName && (
+                      <CardDescription className="text-xs text-amber-500 dark:text-amber-400 font-semibold mt-1">
+                        Target Tournament: <span>{app.tournamentName}</span>
+                      </CardDescription>
+                    )}
                   </div>
                   <Badge variant="outline" className="text-[10px] uppercase font-bold tracking-wider">
                     {app.rank || 'Unknown Rank'}

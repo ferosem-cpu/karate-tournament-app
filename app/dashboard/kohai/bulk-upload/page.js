@@ -99,7 +99,11 @@ export default function BulkUploadPage() {
     if (!r.fullName || !r.fullName.toString().trim()) errors.push('fullName required');
     if (r.gender && !GENDERS.map((g) => g.toLowerCase()).includes(r.gender.toString().toLowerCase())) errors.push('invalid gender');
     if (r.belt && !BELTS.map((b) => b.toLowerCase()).includes(r.belt.toString().toLowerCase())) errors.push('invalid belt');
-    if (r.weight && isNaN(Number(r.weight))) errors.push('weight not a number');
+    if (!r.weight || r.weight.toString().trim() === '') {
+      errors.push('weight required');
+    } else if (isNaN(Number(r.weight))) {
+      errors.push('weight not a number');
+    }
     if (r.dateOfBirth) {
       const d = new Date(r.dateOfBirth);
       if (isNaN(d.getTime())) errors.push('invalid dob');

@@ -32,11 +32,11 @@ const NAV = [
   { href: '/dashboard/kohai', label: 'Kohai', icon: Users, roles: ['super_admin', 'dojo_admin', 'coach', 'tournament_organizer'] },
   { href: '/dashboard/dojos', label: 'Dojos', icon: Building2, roles: ['super_admin', 'dojo_admin', 'coach', 'tournament_organizer'] },
   { href: '/dashboard/categories', label: 'Event Categories', icon: Tags, roles: ['super_admin', 'tournament_organizer'] },
-  { href: '/dashboard/tatamis', label: 'Tatamis', icon: Grid3x3, roles: ['super_admin', 'tournament_organizer'] },
+  { href: '/dashboard/tatamis', label: 'Tatamis', icon: Grid3x3, roles: ['super_admin', 'tournament_organizer', 'referee', 'spectator'] },
   { href: '/dashboard/reports', label: 'Reports', icon: BarChart3 },
   { href: '/dashboard/media', label: 'Media', icon: HardDrive, roles: ['super_admin', 'tournament_organizer'] },
   { href: '/dashboard/notifications', label: 'Notifications', icon: Bell, roles: ['super_admin', 'tournament_organizer'] },
-  { href: '/dashboard/settings', label: 'Settings', icon: Settings },
+  { href: '/dashboard/settings', label: 'Settings', icon: Settings, roles: ['super_admin', 'dojo_admin', 'coach', 'tournament_organizer', 'referee', 'kohai'] },
   { href: '/dashboard/users', label: 'User Management', icon: ShieldCheck, roles: ['super_admin'] },
 ];
 
@@ -112,6 +112,27 @@ export default function AppSidebar({ className, onNavigate }) {
           );
         })}
 
+        {role === 'dojo_admin' && (
+          <>
+            <div className="my-3 px-2 py-2 text-xs uppercase font-bold text-sidebar-foreground/50 tracking-wider border-l-3 border-gold-primary/30 pl-3">
+              Referee Application
+            </div>
+            <Link
+              href="/dashboard/register-referee"
+              onClick={handleNavClick}
+              className={cn(
+                'group flex items-center gap-3 rounded-md px-3 py-2.5 text-sm font-semibold transition-all',
+                pathname === '/dashboard/register-referee'
+                  ? 'bg-gold-primary/10 text-sidebar-accent-foreground border-l-3 border-gold-primary'
+                  : 'text-sidebar-foreground/70 hover:text-sidebar-foreground hover:bg-sidebar-accent/80'
+              )}
+            >
+              <Sparkles className={cn('h-5 w-5', pathname === '/dashboard/register-referee' ? 'text-gold-primary' : '')} />
+              <span>Register as Referee</span>
+            </Link>
+          </>
+        )}
+
         {isAdminOrOrganizer(role) && (
           <>
             <div className="my-3 px-2 py-2 text-xs uppercase font-bold text-sidebar-foreground/50 tracking-wider border-l-3 border-gold-primary/30 pl-3">
@@ -130,6 +151,21 @@ export default function AppSidebar({ className, onNavigate }) {
               <Sparkles className={cn('h-5 w-5', pathname === '/dashboard/onboarding' ? 'text-gold-primary' : '')} />
               <span>Setup Wizard</span>
             </Link>
+            {role === 'tournament_organizer' && (
+              <Link
+                href="/dashboard/admin/referee-applications"
+                onClick={handleNavClick}
+                className={cn(
+                  'group flex items-center gap-3 rounded-md px-3 py-2.5 text-sm font-semibold transition-all',
+                  pathname.startsWith('/dashboard/admin/referee-applications')
+                    ? 'bg-gold-primary/10 text-sidebar-accent-foreground border-l-3 border-gold-primary'
+                    : 'text-sidebar-foreground/70 hover:text-sidebar-foreground hover:bg-sidebar-accent/80'
+                )}
+              >
+                <Users className={cn('h-5 w-5', pathname.startsWith('/dashboard/admin/referee-applications') ? 'text-gold-primary' : '')} />
+                <span>Referee Applications</span>
+              </Link>
+            )}
           </>
         )}
 

@@ -92,8 +92,27 @@ export default function RegistrationDialog({ open, onOpenChange, tournament }) {
     return true;
   });
 
-  const visibleCategories = showMatchingOnly && selectedAthlete ? matchingCategories : tournamentCategories;
-  const filteredAthletes = athletes.filter((a) => (a.fullName || '').toLowerCase().includes(search.toLowerCase()));
+  const genderFilteredCategories = tournamentCategories.filter((c) => {
+    if (!selectedAthlete) return true;
+    if (c.gender && c.gender !== 'Mixed' && selectedAthlete.gender && c.gender.toLowerCase() !== selectedAthlete.gender.toLowerCase()) {
+      return false;
+    }
+    return true;
+  });
+
+  const visibleCategories = showMatchingOnly && selectedAthlete ? matchingCategories : genderFilteredCategories;
+
+  const visibleAthletes = athletes
+    .filter((a) => (a.fullName || '').toLowerCase().includes(search.toLowerCase()))
+    .filter((a) => {
+      if (categoryId) {
+        const selectedCat = categories.find((c) => c.id === categoryId);
+        if (selectedCat && selectedCat.gender && selectedCat.gender !== 'Mixed' && a.gender && selectedCat.gender.toLowerCase() !== a.gender.toLowerCase()) {
+          return false;
+        }
+      }
+      return true;
+    });
 
   const canManageRegistrations = profile?.role === 'super_admin' || (profile?.role === 'tournament_organizer' && tournament?.ownerId === user?.uid);
 
@@ -151,8 +170,8 @@ export default function RegistrationDialog({ open, onOpenChange, tournament }) {
             <Select value={athleteId} onValueChange={setAthleteId}>
               <SelectTrigger><SelectValue placeholder="Select kohai…" /></SelectTrigger>
               <SelectContent className="max-h-72">
-                {filteredAthletes.length === 0 ? <div className="px-2 py-1.5 text-xs text-muted-foreground">No kohai found</div> :
-                  filteredAthletes.map((a) => <SelectItem key={a.id} value={a.id}>{a.fullName} {a.dojoName ? `· ${a.dojoName}` : ''} {a.belt ? `· ${a.belt}` : ''}</SelectItem>)}
+                {visibleAthletes.length === 0 ? <div className="px-2 py-1.5 text-xs text-muted-foreground">No kohai found</div> :
+                  visibleAthletes.map((a) => <SelectItem key={a.id} value={a.id}>{a.fullName} {a.dojoName ? `· ${a.dojoName}` : ''} {a.belt ? `· ${a.belt}` : ''}</SelectItem>)}
               </SelectContent>
             </Select>
           </div>

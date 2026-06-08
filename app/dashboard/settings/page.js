@@ -6,10 +6,15 @@ import { Card, CardContent } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import ApplyForRoleButton from '@/components/apply-for-role-button';
 import OrganizerBillingDashboard from '@/components/organizer-billing-dashboard';
+import AccessDenied from '@/components/access-denied';
 
 export default function SettingsPage() {
   const { user, profile } = useAuth();
   const role = profile?.role || 'spectator';
+
+  if (role === 'spectator') {
+    return <AccessDenied resource="Settings" />;
+  }
 
   return (
     <>
@@ -27,6 +32,12 @@ export default function SettingsPage() {
             }
           />
           <Row label="UID" value={<code className="text-xs">{user?.uid}</code>} />
+          {role === 'spectator' && (profile?.city || profile?.country) && (
+            <Row
+              label="Location"
+              value={[profile?.city, profile?.country].filter(Boolean).join(', ') || '—'}
+            />
+          )}
         </CardContent>
       </Card>
 

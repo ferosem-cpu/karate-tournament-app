@@ -287,7 +287,14 @@ export default function ParticipateTournamentDialog({ open, onOpenChange, tourna
     const isChecked = !!selectedAthletes[athlete.id];
 
     const recommendedIds = new Set(matches.map((m) => m.id));
-    const otherCategories = categories.filter((c) => !recommendedIds.has(c.id));
+    const otherCategories = categories.filter((c) => {
+      if (recommendedIds.has(c.id)) return false;
+      // Strict gender matching for other events dropdown list
+      if (c.gender && c.gender !== 'Mixed' && athlete.gender && c.gender.toLowerCase() !== athlete.gender.toLowerCase()) {
+        return false;
+      }
+      return true;
+    });
 
     return (
       <DropdownMenu>

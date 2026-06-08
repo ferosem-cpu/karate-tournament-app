@@ -14,12 +14,12 @@ import PageHeader from '@/components/page-header';
 import CategoryFormDialog from '@/components/category-form-dialog';
 import AutoCreateCategoriesDialog from '@/components/auto-create-categories-dialog';
 import { Plus, Tags, Search, Pencil, Trash2, Wand2, Lock, Eye, Users } from 'lucide-react';
-import { isAdminOrOrganizer, beltClass } from '@/lib/constants';
+import { canManageCategories, beltClass } from '@/lib/constants';
 import { toast } from 'sonner';
 
 export default function CategoriesPage() {
   const { profile } = useAuth();
-  const canManage = isAdminOrOrganizer(profile?.role);
+  const canManage = canManageCategories(profile?.role);
 
   const [categories, setCategories] = useState([]);
   const [tournaments, setTournaments] = useState([]);

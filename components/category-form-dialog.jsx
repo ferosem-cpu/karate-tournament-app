@@ -12,12 +12,12 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { Switch } from '@/components/ui/switch';
 import { toast } from 'sonner';
 import { Loader2 } from 'lucide-react';
-import { BELTS, GENDERS, EVENT_TYPES } from '@/lib/constants';
+import { BELTS, GENDERS, EVENT_TYPES, canManageCategories } from '@/lib/constants';
 
 const GENDER_OPTIONS = ['Mixed', ...GENDERS];
 
 export default function CategoryFormDialog({ open, onOpenChange, tournaments, initial, id, lockedTournamentId }) {
-  const { user } = useAuth();
+  const { user, profile } = useAuth();
   const [busy, setBusy] = useState(false);
   const [form, setForm] = useState({
     name: '', tournamentId: '', tournamentName: '', eventType: 'Kumite',
@@ -63,6 +63,9 @@ export default function CategoryFormDialog({ open, onOpenChange, tournaments, in
 
   const submit = async (e) => {
     e.preventDefault();
+    if (!canManageCategories(profile?.role)) {
+      return toast.error('View-only: you cannot create or edit event categories');
+    }
     if (!form.name.trim()) return toast.error('Event Category name is required');
     if (!form.byAge && !form.byWeight) {
       return toast.error('Please check at least "Create event by age" or "Create event by weight".');

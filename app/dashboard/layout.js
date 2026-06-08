@@ -46,7 +46,8 @@ export default function DashboardLayout({ children }) {
     );
   }
 
-  if (profile?.role === 'spectator' && !sessionOnboarded) {
+  const alreadyOnboarded = !!profile?.onboardedRoleSelection;
+  if (profile?.role === 'spectator' && !alreadyOnboarded && !sessionOnboarded) {
     return (
       <div className="flex min-h-screen bg-zinc-950 items-center justify-center p-4">
         <SpectatorOnboarding

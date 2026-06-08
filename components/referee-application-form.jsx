@@ -21,7 +21,7 @@ const MARTIAL_ARTS_RANKS = ['1st Degree', '2nd Degree', '3rd Degree', '4th Degre
 
 export default function RefereeApplicationForm() {
   const router = useRouter();
-  const { user, loading } = useAuth();
+  const { user, profile, loading } = useAuth();
   const fileRef = useRef();
   
   // Early return if not authenticated
@@ -110,18 +110,16 @@ export default function RefereeApplicationForm() {
       return;
     }
 
-    if (!form.fullName?.trim()) return toast.error('Full name is required');
-    if (!form.martialArtsRank) return toast.error('Martial arts rank is required');
-    if (!form.beltLevel) return toast.error('Belt level is required');
+    const fullName = profile?.displayName || user?.displayName || user?.email || 'Anonymous';
     if (!form.certifications?.trim()) return toast.error('Certifications description is required');
 
     setBusy(true);
     try {
       await submitRefereeApplication(
         user.uid,
-        form.fullName,
-        form.martialArtsRank,
-        form.beltLevel,
+        fullName,
+        form.martialArtsRank || '—',
+        form.beltLevel || '—',
         form.certifications,
         form.certificateUrl || null
       );
@@ -157,63 +155,6 @@ export default function RefereeApplicationForm() {
 
   return (
     <form onSubmit={handleSubmit} className="max-w-2xl mx-auto space-y-6">
-      <Card className="border-border/60">
-        <CardContent className="p-6">
-          <h2 className="text-lg font-semibold mb-5">Personal Information</h2>
-          <div className="space-y-4">
-            <div>
-              <Label className="text-xs uppercase tracking-wider text-muted-foreground mb-1.5 block">
-                Full Name *
-              </Label>
-              <Input
-                value={form.fullName}
-                onChange={(e) => set('fullName', e.target.value)}
-                placeholder="John Doe"
-                required
-              />
-            </div>
-
-            <div className="grid sm:grid-cols-2 gap-4">
-              <div>
-                <Label className="text-xs uppercase tracking-wider text-muted-foreground mb-1.5 block">
-                  Martial Arts Rank *
-                </Label>
-                <Select value={form.martialArtsRank} onValueChange={(v) => set('martialArtsRank', v)}>
-                  <SelectTrigger>
-                    <SelectValue placeholder="Select rank…" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    {MARTIAL_ARTS_RANKS.map((rank) => (
-                      <SelectItem key={rank} value={rank}>
-                        {rank}
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
-              </div>
-
-              <div>
-                <Label className="text-xs uppercase tracking-wider text-muted-foreground mb-1.5 block">
-                  Belt Level *
-                </Label>
-                <Select value={form.beltLevel} onValueChange={(v) => set('beltLevel', v)}>
-                  <SelectTrigger>
-                    <SelectValue placeholder="Select belt…" />
-                  </SelectTrigger>
-                  <SelectContent className="max-h-72">
-                    {(BELTS || []).map((belt) => (
-                      <SelectItem key={belt} value={belt}>
-                        {belt}
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
-              </div>
-            </div>
-          </div>
-        </CardContent>
-      </Card>
-
       <Card className="border-border/60">
         <CardContent className="p-6">
           <h2 className="text-lg font-semibold mb-5">Certifications & Experience</h2>

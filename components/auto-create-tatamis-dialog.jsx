@@ -11,9 +11,10 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, Di
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Loader2, Wand2 } from 'lucide-react';
 import { toast } from 'sonner';
+import { canManageTatamis } from '@/lib/constants';
 
 export default function AutoCreateTatamisDialog({ open, onOpenChange, tournaments, lockedTournamentId }) {
-  const { user } = useAuth();
+  const { user, profile } = useAuth();
   const [busy, setBusy] = useState(false);
   const [count, setCount] = useState(4);
   const [tournamentId, setTournamentId] = useState(lockedTournamentId || '');
@@ -27,6 +28,9 @@ export default function AutoCreateTatamisDialog({ open, onOpenChange, tournament
   }, [lockedTournamentId]);
 
   const create = async () => {
+    if (!canManageTatamis(profile?.role)) {
+      return toast.error('View-only: you cannot create tatamis');
+    }
     if (!tournamentId) return toast.error('Select a tournament');
     if (!defaultReferee.trim()) return toast.error('Provide a default referee (can be edited per-tatami later)');
     const t = tournaments.find((x) => x.id === tournamentId);
