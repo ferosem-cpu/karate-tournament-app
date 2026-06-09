@@ -1,7 +1,8 @@
 'use client';
 
 import Link from 'next/link';
-import { useEffect, useState } from 'react';
+import { useEffect, useState, Suspense } from 'react';
+import { useSearchParams } from 'next/navigation';
 import { collection, deleteDoc, doc, onSnapshot, orderBy, query } from 'firebase/firestore';
 import { db } from '@/lib/firebase';
 import { useAuth } from '@/lib/auth-context';
@@ -23,7 +24,7 @@ const STATUS_META = {
   delayed: { icon: Pause,    cls: 'bg-orange-500/15 text-orange-300 border-orange-500/40', label: 'Delayed' },
 };
 
-export default function TatamisPage() {
+function TatamisPageContent() {
   const { profile } = useAuth();
   const canManage = canManageTatamis(profile?.role);
   const [tatamis, setTatamis] = useState([]);
@@ -34,20 +35,22 @@ export default function TatamisPage() {
   const [autoOpen, setAutoOpen] = useState(false);
   const [editing, setEditing] = useState(null);
 
+  const searchParams = useSearchParams();
+  const tid = searchParams.get('tournamentId');
+
   useEffect(() => {
     const u1 = onSnapshot(query(collection(db, 'tatamis'), orderBy('createdAt', 'desc')), (s) => { setTatamis(s.docs.map((d) => ({ id: d.id, ...d.data() }))); setLoading(false); }, () => setLoading(false));
     const u2 = onSnapshot(collection(db, 'tournaments'), (s) => setTournaments(s.docs.map((d) => ({ id: d.id, ...d.data() }))));
-    
-    if (typeof window !== 'undefined') {
-      const params = new URLSearchParams(window.location.search);
-      const tid = params.get('tournamentId');
-      if (tid) {
-        setTournamentFilter(tid);
-      }
-    }
-
     return () => { u1(); u2(); };
   }, []);
+
+  useEffect(() => {
+    if (tid) {
+      setTournamentFilter(tid);
+    } else {
+      setTournamentFilter('__all__');
+    }
+  }, [tid]);
 
   const filtered = tatamis.filter((t) => tournamentFilter === '__all__' || t.tournamentId === tournamentFilter);
 
@@ -160,5 +163,13 @@ export default function TatamisPage() {
       <TatamiFormDialog open={dialogOpen} onOpenChange={setDialogOpen} tournaments={tournaments} initial={editing} id={editing?.id} />
       <AutoCreateTatamisDialog open={autoOpen} onOpenChange={setAutoOpen} tournaments={tournaments} />
     </>
+  );
+}
+
+export default function TatamisPage() {
+  return (
+    <Suspense fallback={<div className="text-muted-foreground text-sm flex items-center justify-center p-12">Loading Tatamis Portal…</div>}>
+      <TatamisPageContent />
+    </Suspense>
   );
 }

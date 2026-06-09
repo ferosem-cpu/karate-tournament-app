@@ -1,7 +1,7 @@
 'use client';
 
 import { useState, useEffect } from 'react';
-import { addDoc, collection, doc, onSnapshot, query, serverTimestamp, where } from 'firebase/firestore';
+import { addDoc, collection, doc, onSnapshot, query, serverTimestamp, where, getDocs } from 'firebase/firestore';
 import { db } from '@/lib/firebase';
 import { useAuth } from '@/lib/auth-context';
 import { Button } from '@/components/ui/button';
@@ -123,10 +123,25 @@ export default function RegistrationDialog({ open, onOpenChange, tournament }) {
       return;
     }
     if (!athleteId) return toast.error('Select a kohai');
+    if (!categoryId) return toast.error('Select a category');
     const a = athletes.find((x) => x.id === athleteId);
     const c = categories.find((x) => x.id === categoryId);
     setBusy(true);
     try {
+      const qDup = query(
+        collection(db, 'tournament_registrations'),
+        where('tournamentId', '==', tournament.id),
+        where('athleteId', '==', athleteId),
+        where('categoryId', '==', categoryId)
+      );
+      const snapDup = await getDocs(qDup);
+      const activeDups = snapDup.docs.filter((d) => d.data().status !== 'rejected');
+      if (activeDups.length > 0) {
+        toast.error('This Kohai is already registered for this event category in this tournament.');
+        setBusy(false);
+        return;
+      }
+
       await addDoc(collection(db, 'tournament_registrations'), {
         tournamentId: tournament.id,
         tournamentName: tournament.name,

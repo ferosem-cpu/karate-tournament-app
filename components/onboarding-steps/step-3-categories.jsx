@@ -5,7 +5,8 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import { Plus, Trash2, Loader2 } from 'lucide-react';
+import { Plus, Trash2, Loader2, Wand2 } from 'lucide-react';
+import { STANDARD_AGE_DIVISIONS, STANDARD_WEIGHT_DIVISIONS } from '@/lib/constants';
 
 const EVENT_TYPES = ['Kata', 'Kumite', 'Team Kata', 'Team Kumite'];
 
@@ -43,6 +44,57 @@ export default function Step3Categories({ wizardData, onNext }) {
 
   const removeCategory = (id) => {
     setCategories(categories.filter((c) => c.id !== id));
+  };
+
+  const autoCreateCategories = () => {
+    const selectedAgeDivs = STANDARD_AGE_DIVISIONS.slice(0, 6);
+    const selectedWeightDivs = STANDARD_WEIGHT_DIVISIONS.slice(0, 5);
+    const genders = ['Male', 'Female'];
+    const events = ['Kata', 'Kumite'];
+    const newCats = [];
+    let count = 0;
+
+    for (const g of genders) {
+      for (const ev of events) {
+        const isKumite = ev.toLowerCase().includes('kumite');
+        if (isKumite) {
+          for (const ageDiv of selectedAgeDivs) {
+            for (const weightDiv of selectedWeightDivs) {
+              const nameParts = [ageDiv.label, g, ev, weightDiv.label];
+              newCats.push({
+                id: Date.now() + count++,
+                name: nameParts.join(' '),
+                eventType: ev,
+                gender: g,
+                minAge: ageDiv.min,
+                maxAge: ageDiv.max,
+                minWeight: weightDiv.min,
+                maxWeight: weightDiv.max,
+                byAge: true,
+                byWeight: true
+              });
+            }
+          }
+        } else {
+          for (const ageDiv of selectedAgeDivs) {
+            const nameParts = [ageDiv.label, g, ev];
+            newCats.push({
+              id: Date.now() + count++,
+              name: nameParts.join(' '),
+              eventType: ev,
+              gender: g,
+              minAge: ageDiv.min,
+              maxAge: ageDiv.max,
+              minWeight: '',
+              maxWeight: '',
+              byAge: true,
+              byWeight: false
+            });
+          }
+        }
+      }
+    }
+    setCategories([...categories, ...newCats]);
   };
 
   const handleNext = () => {
@@ -147,10 +199,16 @@ export default function Step3Categories({ wizardData, onNext }) {
           )}
         </div>
 
-        <Button onClick={addCategory} variant="outline" className="w-full" size="sm">
-          <Plus className="h-4 w-4 mr-2" />
-          Add Event Category
-        </Button>
+        <div className="flex gap-2">
+          <Button onClick={addCategory} variant="outline" className="flex-1" size="sm">
+            <Plus className="h-4 w-4 mr-2" />
+            Add Event Category
+          </Button>
+          <Button type="button" onClick={autoCreateCategories} variant="outline" className="border-amber-500/40 text-amber-350 hover:bg-amber-500/10" size="sm">
+            <Wand2 className="h-4 w-4 mr-2" />
+            Auto Create (Standard)
+          </Button>
+        </div>
       </div>
 
       {categories.length > 0 && (

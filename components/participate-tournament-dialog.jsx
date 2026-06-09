@@ -1,7 +1,7 @@
 'use client';
 
 import { useState, useEffect } from 'react';
-import { collection, doc, writeBatch, serverTimestamp, query, where, onSnapshot } from 'firebase/firestore';
+import { collection, doc, writeBatch, serverTimestamp, query, where, onSnapshot, getDocs } from 'firebase/firestore';
 import { db } from '@/lib/firebase';
 import { useAuth } from '@/lib/auth-context';
 import { Button } from '@/components/ui/button';
@@ -227,6 +227,13 @@ export default function ParticipateTournamentDialog({ open, onOpenChange, tourna
       for (const athlete of athletes) {
         const isChecked = !!selectedAthletes[athlete.id];
         const selectedIds = athleteSelections[athlete.id] || [];
+        
+        if (isChecked && selectedIds.length === 0) {
+          toast.error(`Please select at least one event category for ${athlete.fullName}`);
+          setBusy(false);
+          return;
+        }
+
         const targetCategoryIds = isChecked ? selectedIds : [];
 
         const athleteRegs = existingRegs.filter((r) => r.athleteId === athlete.id);
@@ -243,6 +250,20 @@ export default function ParticipateTournamentDialog({ open, onOpenChange, tourna
         for (const catId of categoryIdsToAdd) {
           const category = categories.find((c) => c.id === catId);
           if (!category) continue;
+
+          const qDup = query(
+            collection(db, 'tournament_registrations'),
+            where('tournamentId', '==', tournament.id),
+            where('athleteId', '==', athlete.id),
+            where('categoryId', '==', catId)
+          );
+          const snapDup = await getDocs(qDup);
+          const activeDups = snapDup.docs.filter((d) => d.data().status !== 'rejected');
+          if (activeDups.length > 0) {
+            toast.error(`${athlete.fullName} is already registered for "${category.name || 'this category'}" in this tournament.`);
+            setBusy(false);
+            return;
+          }
 
           const newRef = doc(collection(db, 'tournament_registrations'));
           batch.set(newRef, {

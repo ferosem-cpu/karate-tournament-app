@@ -7,6 +7,7 @@ import {
   where, 
   onSnapshot, 
   doc, 
+  getDoc,
   writeBatch,
   getDocs 
 } from 'firebase/firestore';
@@ -118,10 +119,14 @@ export default function RefereeApplicationReviewPanel() {
       const appRef = doc(db, 'referee_applications', app.id);
       batch.update(appRef, { status: targetStatus });
 
-      // 2. If approved, transition user document role metadata to 'referee'
+      // 2. If approved, transition user document role metadata to 'referee' (unless user is already a dojo_admin, super_admin, or tournament_organizer)
       if (targetStatus === 'approved') {
         const userRef = doc(db, 'users', app.userId);
-        batch.update(userRef, { role: 'referee' });
+        const userSnap = await getDoc(userRef);
+        const currentRole = userSnap.exists() ? userSnap.data().role : null;
+        if (currentRole !== 'dojo_admin' && currentRole !== 'super_admin' && currentRole !== 'tournament_organizer') {
+          batch.update(userRef, { role: 'referee' });
+        }
       }
 
       await batch.commit();

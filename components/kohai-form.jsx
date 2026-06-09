@@ -59,10 +59,12 @@ export default function KohaiForm({ initial, id }) {
       setDojosLoaded(true);
 
       if (!id) {
-        if (profile?.role === 'dojo_admin' && user?.uid) {
-          const myDojo = allDojos.find((d) => d.ownerId === user.uid);
-          if (myDojo) {
-            setForm((f) => ({ ...f, dojoId: myDojo.id, dojoName: myDojo.name }));
+        const isManager = profile?.role === 'dojo_admin' || profile?.role === 'tournament_organizer' || profile?.role === 'coach';
+        if (isManager && user?.uid) {
+          const myDojos = allDojos.filter((d) => d.ownerId === user.uid);
+          const preselectedDojo = myDojos.find((d) => d.id === queryDojoId) || myDojos[0];
+          if (preselectedDojo) {
+            setForm((f) => ({ ...f, dojoId: preselectedDojo.id, dojoName: preselectedDojo.name }));
           }
         } else if (queryDojoId) {
           const selectedDojo = allDojos.find((d) => d.id === queryDojoId);
@@ -120,20 +122,21 @@ export default function KohaiForm({ initial, id }) {
   const submit = async (e) => {
     e.preventDefault();
     if (!form.fullName.trim()) return toast.error('Full name is required');
+    if (!form.photoUrl) return toast.error('Profile photo is required');
     if (!form.gender) return toast.error('Gender is required');
     if (!form.dateOfBirth) return toast.error('Date of birth is required');
     if (!form.weight || form.weight === '') return toast.error('Weight is required');
     if (!form.dojoId) return toast.error(dojos.length === 0 ? NO_DOJO_MSG : 'Please select a registered dojo');
-    if (!form.eventType) return toast.error('Event category is required');
     if (!form.proofOfAgeUrl) return toast.error('Proof of age document is required (PDF/JPG/PNG)');
 
     let finalDojoId = form.dojoId;
     let finalDojoName = form.dojoName;
-    if (profile?.role === 'dojo_admin') {
-      const myDojo = dojos.find((d) => d.ownerId === user.uid);
-      if (myDojo) {
-        finalDojoId = myDojo.id;
-        finalDojoName = myDojo.name;
+    const isManager = profile?.role === 'dojo_admin' || profile?.role === 'tournament_organizer' || profile?.role === 'coach';
+    if (isManager) {
+      const selectedDojo = dojos.find((d) => d.id === form.dojoId && d.ownerId === user.uid);
+      if (selectedDojo) {
+        finalDojoId = selectedDojo.id;
+        finalDojoName = selectedDojo.name;
       } else {
         toast.error(NO_DOJO_MSG);
         return;
@@ -184,7 +187,7 @@ export default function KohaiForm({ initial, id }) {
         <h2 className="font-semibold text-lg mb-5">Personal Details</h2>
         <div className="grid md:grid-cols-[160px_1fr] gap-5">
           <div>
-            <Label className="text-xs uppercase tracking-wider text-muted-foreground mb-1.5 block">Profile Photo</Label>
+            <Label className="text-xs uppercase tracking-wider text-muted-foreground mb-1.5 block">Profile Photo *</Label>
             <div onClick={() => fileRef.current?.click()} className="aspect-square rounded-md border-2 border-dashed border-border bg-secondary/30 overflow-hidden flex items-center justify-center hover:border-primary/50 transition cursor-pointer relative">
               {form.photoUrl ? <img src={form.photoUrl} alt="" className="absolute inset-0 h-full w-full object-cover" /> : <div className="text-muted-foreground flex flex-col items-center gap-1"><User className="h-6 w-6" /><span className="text-xs">Upload</span></div>}
               {form.photoUrl && <button type="button" onClick={(e) => { e.stopPropagation(); set('photoUrl', ''); }} className="absolute top-1 right-1 h-6 w-6 rounded-full bg-black/60 flex items-center justify-center"><X className="h-3.5 w-3.5" /></button>}
@@ -220,9 +223,16 @@ export default function KohaiForm({ initial, id }) {
               <SelectContent className="max-h-72">{BELTS.map((b) => <SelectItem key={b} value={b}>{b}</SelectItem>)}</SelectContent>
             </Select>
           </Field>
-          {profile?.role === 'dojo_admin' ? (
-            <Field label="Dojo">
-              <Input value={form.dojoName || 'Your Registered Dojo'} disabled className="bg-secondary/40 text-muted-foreground border-border/40" />
+          {profile?.role === 'dojo_admin' || profile?.role === 'tournament_organizer' || profile?.role === 'coach' ? (
+            <Field label="Dojo *">
+              <Select value={form.dojoId || undefined} onValueChange={onDojoChange}>
+                <SelectTrigger><SelectValue placeholder="Select one of your dojos…" /></SelectTrigger>
+                <SelectContent>
+                  {dojos.filter((d) => d.ownerId === user?.uid).map((d) => (
+                    <SelectItem key={d.id} value={d.id}>{d.name}</SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
             </Field>
           ) : (
             <Field label="Dojo *">
@@ -235,7 +245,7 @@ export default function KohaiForm({ initial, id }) {
               </Select>
             </Field>
           )}
-          <Field label="Event Category *">
+          <Field label="Event Category">
             <Select value={form.eventType || undefined} onValueChange={(v) => set('eventType', v)}>
               <SelectTrigger><SelectValue placeholder="Kata / Kumite / Team…" /></SelectTrigger>
               <SelectContent>{EVENT_TYPES.map((c) => <SelectItem key={c} value={c}>{c}</SelectItem>)}</SelectContent>

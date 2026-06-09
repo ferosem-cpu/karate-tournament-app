@@ -18,15 +18,28 @@ export default function EditKohaiPage() {
   const [accessDenied, setAccessDenied] = useState(false);
 
   useEffect(() => {
+    if (!user) return;
     (async () => {
       const s = await getDoc(doc(db, 'athletes', id));
       if (s.exists()) {
         const athleteData = s.data();
-        // Security check: allow if super_admin OR if user is the owner
+        // Security check: allow if super_admin, if user is the creator/owner, or if user is dojo_admin and owns the athlete's dojo
         const isOwner = user?.uid === athleteData.ownerId;
         const isSuperAdmin = profile?.role === 'super_admin';
         
-        if (!isOwner && !isSuperAdmin) {
+        let isDojoOwnerOfAthlete = false;
+        if (profile?.role === 'dojo_admin' && athleteData.dojoId) {
+          try {
+            const dojoSnap = await getDoc(doc(db, 'dojos', athleteData.dojoId));
+            if (dojoSnap.exists() && dojoSnap.data().ownerId === user.uid) {
+              isDojoOwnerOfAthlete = true;
+            }
+          } catch (err) {
+            console.error("Error checking dojo ownership:", err);
+          }
+        }
+        
+        if (!isOwner && !isSuperAdmin && !isDojoOwnerOfAthlete) {
           setAccessDenied(true);
         } else {
           setData(athleteData);

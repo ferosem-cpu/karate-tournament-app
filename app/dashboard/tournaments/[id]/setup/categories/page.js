@@ -18,8 +18,7 @@ import { toast } from 'sonner';
 export default function SetupCategoriesPage() {
   const { id } = useParams();
   const router = useRouter();
-  const { profile } = useAuth();
-  const canManage = canManageCategories(profile?.role);
+  const { user, profile } = useAuth();
 
   const [tournament, setTournament] = useState(null);
   const [categories, setCategories] = useState([]);
@@ -27,6 +26,9 @@ export default function SetupCategoriesPage() {
   const [dialogOpen, setDialogOpen] = useState(false);
   const [autoOpen, setAutoOpen] = useState(false);
   const [editing, setEditing] = useState(null);
+
+  const isOwner = tournament?.ownerId === user?.uid;
+  const canManage = profile?.role === 'super_admin' || (profile?.role === 'tournament_organizer' && isOwner);
 
   useEffect(() => {
     if (!id) return;

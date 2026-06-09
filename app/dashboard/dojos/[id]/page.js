@@ -14,7 +14,7 @@ import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { beltClass } from '@/lib/constants';
 import { formatDate } from '@/lib/utils';
-import { Loader2, Users, Plus } from 'lucide-react';
+import { Loader2, Users, Plus, Pencil, Trash2 } from 'lucide-react';
 import { useAuth } from '@/lib/auth-context';
 import { toast } from 'sonner';
 
@@ -56,6 +56,16 @@ export default function EditDojoPage() {
         title="Edit Dojo"
         description={data.name}
         breadcrumb={[{ label: 'Dojos', href: '/dashboard/dojos' }, { label: data.name }, { label: 'Edit' }]}
+        actions={
+          (profile?.role === 'dojo_admin' || profile?.role === 'super_admin') && (
+            <Button asChild className="bg-primary hover:bg-primary/90">
+              <Link href="/dashboard/dojos/new">
+                <Plus className="h-4 w-4 mr-2" />
+                Add Additional Dojo
+              </Link>
+            </Button>
+          )
+        }
       />
       <DojoForm initial={data} id={id} />
       <DojoKohaiList dojoId={id} />
@@ -64,7 +74,7 @@ export default function EditDojoPage() {
 }
 
 function DojoKohaiList({ dojoId }) {
-  const { profile } = useAuth();
+  const { profile, user } = useAuth();
   const [athletes, setAthletes] = useState([]);
   const [loading, setLoading] = useState(true);
 
@@ -102,6 +112,18 @@ function DojoKohaiList({ dojoId }) {
       toast.error(`Failed to reject: ${e.message}`);
     }
   };
+
+  const handleDelete = async (athlete) => {
+    if (!confirm(`Remove kohai "${athlete.fullName}"?`)) return;
+    try {
+      await deleteDoc(doc(db, 'athletes', athlete.id));
+      toast.success('Kohai removed');
+    } catch (e) {
+      toast.error(e.message);
+    }
+  };
+
+  const canManage = profile?.role === 'super_admin' || profile?.role === 'dojo_admin';
 
   if (loading) return <div className="text-sm text-muted-foreground mt-4 flex items-center gap-2"><Loader2 className="h-4 w-4 animate-spin text-primary" /> Loading athletes…</div>;
 
@@ -201,7 +223,7 @@ function DojoKohaiList({ dojoId }) {
                 {activeAthletes.length} athlete(s) registered under this dojo
               </p>
             </div>
-            {profile?.role === 'dojo_admin' && (
+            {canManage && (
               <Button asChild size="sm" className="bg-primary hover:bg-primary/90">
                 <Link href={`/dashboard/kohai/new?dojoId=${dojoId}`}>
                   <Plus className="h-4 w-4 mr-1.5" /> Add Kohai
@@ -226,6 +248,7 @@ function DojoKohaiList({ dojoId }) {
                     <TableHead>DOB</TableHead>
                     <TableHead>Weight</TableHead>
                     <TableHead>Event Type</TableHead>
+                    {canManage && <TableHead className="text-right">Actions</TableHead>}
                   </TableRow>
                 </TableHeader>
                 <TableBody>
@@ -253,6 +276,12 @@ function DojoKohaiList({ dojoId }) {
                       <TableCell className="text-muted-foreground text-xs">{formatDate(a.dateOfBirth)}</TableCell>
                       <TableCell className="text-muted-foreground text-xs">{a.weight ? `${a.weight} kg` : '—'}</TableCell>
                       <TableCell className="text-muted-foreground text-xs">{a.eventType || '—'}</TableCell>
+                      {canManage && (
+                        <TableCell className="text-right">
+                          <Button asChild size="sm" variant="ghost"><Link href={`/dashboard/kohai/${a.id}`}><Pencil className="h-3.5 w-3.5" /></Link></Button>
+                          <Button size="sm" variant="ghost" onClick={() => handleDelete(a)}><Trash2 className="h-3.5 w-3.5 text-destructive" /></Button>
+                        </TableCell>
+                      )}
                     </TableRow>
                   ))}
                 </TableBody>

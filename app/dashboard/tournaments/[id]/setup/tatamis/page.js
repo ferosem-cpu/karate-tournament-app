@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from 'react';
 import { useParams, useRouter } from 'next/navigation';
-import { collection, doc, getDoc, onSnapshot, query, where, deleteDoc } from 'firebase/firestore';
+import { collection, doc, getDoc, onSnapshot, query, where, deleteDoc, updateDoc, serverTimestamp } from 'firebase/firestore';
 import { db } from '@/lib/firebase';
 import { useAuth } from '@/lib/auth-context';
 import { Button } from '@/components/ui/button';
@@ -18,8 +18,7 @@ import { toast } from 'sonner';
 export default function SetupTatamisPage() {
   const { id } = useParams();
   const router = useRouter();
-  const { profile } = useAuth();
-  const canManage = canManageTatamis(profile?.role);
+  const { user, profile } = useAuth();
 
   const [tournament, setTournament] = useState(null);
   const [tatamis, setTatamis] = useState([]);
@@ -27,6 +26,9 @@ export default function SetupTatamisPage() {
   const [dialogOpen, setDialogOpen] = useState(false);
   const [autoOpen, setAutoOpen] = useState(false);
   const [editing, setEditing] = useState(null);
+
+  const isOwner = tournament?.ownerId === user?.uid;
+  const canManage = profile?.role === 'super_admin' || (profile?.role === 'tournament_organizer' && isOwner);
 
   useEffect(() => {
     if (!id) return;
@@ -68,6 +70,20 @@ export default function SetupTatamisPage() {
     }
     toast.success('Tournament setup complete!');
     router.push(`/dashboard/tournaments/${id}`);
+  };
+
+  const handlePublish = async () => {
+    if (!canManage) return;
+    try {
+      await updateDoc(doc(db, 'tournaments', id), {
+        status: 'registration_open',
+        updatedAt: serverTimestamp(),
+      });
+      toast.success('Tournament published and registration is open!');
+      router.push(`/dashboard/tournaments/${id}`);
+    } catch (e) {
+      toast.error(`Publish failed: ${e.message}`);
+    }
   };
 
   if (loading) {
@@ -161,13 +177,35 @@ export default function SetupTatamisPage() {
         <Button variant="ghost" onClick={() => router.push(canManage ? `/dashboard/tournaments/${id}/setup/categories` : `/dashboard/tournaments/${id}`)} className="text-zinc-400 hover:text-white">
           <ArrowLeft className="h-4 w-4 mr-1.5" /> {canManage ? 'Back to Event Categories' : 'Back to Tournament'}
         </Button>
-        <Button
-          onClick={handleFinish}
-          className="bg-gradient-to-r from-emerald-500 to-teal-600 hover:from-emerald-600 hover:to-teal-700 text-white font-extrabold px-8 h-10 shadow-md border-none flex items-center gap-1.5"
-        >
-          <CheckCircle2 className="h-4.5 w-4.5" />
-          {canManage ? 'Finish & View Dashboard' : 'Back to Tournament'}
-        </Button>
+        <div className="flex gap-2">
+          {canManage && tournament?.status === 'draft' && (
+            <>
+              <Button
+                variant="outline"
+                onClick={handleFinish}
+                className="border-zinc-800 hover:bg-zinc-900 text-zinc-300"
+              >
+                Save as Draft
+              </Button>
+              <Button
+                onClick={handlePublish}
+                className="bg-gradient-to-r from-emerald-500 to-teal-600 hover:from-emerald-600 hover:to-teal-700 text-white font-extrabold px-8 h-10 shadow-md border-none flex items-center gap-1.5"
+              >
+                <CheckCircle2 className="h-4.5 w-4.5" />
+                Publish & Open Reg
+              </Button>
+            </>
+          )}
+          {(!canManage || tournament?.status !== 'draft') && (
+            <Button
+              onClick={handleFinish}
+              className="bg-gradient-to-r from-emerald-500 to-teal-600 hover:from-emerald-600 hover:to-teal-700 text-white font-extrabold px-8 h-10 shadow-md border-none flex items-center gap-1.5"
+            >
+              <CheckCircle2 className="h-4.5 w-4.5" />
+              {canManage ? 'Finish & View Dashboard' : 'Back to Tournament'}
+            </Button>
+          )}
+        </div>
       </div>
 
       {canManage && (

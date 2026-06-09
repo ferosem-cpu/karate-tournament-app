@@ -181,7 +181,6 @@ export default function SpectatorOnboarding({ onComplete }) {
     if (!kohaiForm.fullName.trim()) return toast.error('Athlete Full name is required');
     if (!kohaiForm.gender) return toast.error('Athlete Gender is required');
     if (!kohaiForm.dateOfBirth) return toast.error('Athlete Date of Birth is required');
-    if (!kohaiForm.eventType) return toast.error('Athlete Event Category is required');
     if (!kohaiForm.proofOfAgeUrl) return toast.error('Athlete Proof of Age is required');
 
     setLocalKohais((prev) => [...prev, { ...kohaiForm, id: Date.now().toString() }]);
@@ -273,7 +272,6 @@ export default function SpectatorOnboarding({ onComplete }) {
     if (!studentForm.gender) return toast.error('Gender is required');
     if (!studentForm.dateOfBirth) return toast.error('Date of Birth is required');
     if (!studentForm.dojoId) return toast.error('Affiliated Dojo selection is mandatory');
-    if (!studentForm.eventType) return toast.error('Event Category is required');
     if (!studentForm.proofOfAgeUrl) return toast.error('Proof of age document is required');
 
     setBusy(true);
@@ -665,7 +663,7 @@ export default function SpectatorOnboarding({ onComplete }) {
                 <Input type="number" step="0.1" value={kohaiForm.weight} onChange={(e) => handleKohaiFormChange('weight', e.target.value)} placeholder="65" />
               </div>
               <div className="space-y-1 col-span-2">
-                <Label className="text-xs text-zinc-400 font-semibold">Event Category *</Label>
+                <Label className="text-xs text-zinc-400 font-semibold">Event Category</Label>
                 <Select value={kohaiForm.eventType} onValueChange={(v) => handleKohaiFormChange('eventType', v)}>
                   <SelectTrigger><SelectValue placeholder="Select Category" /></SelectTrigger>
                   <SelectContent>{EVENT_TYPES.map((et) => <SelectItem key={et} value={et}>{et}</SelectItem>)}</SelectContent>
@@ -839,7 +837,7 @@ export default function SpectatorOnboarding({ onComplete }) {
                 <Input type="number" step="0.1" value={studentForm.weight} onChange={(e) => handleStudentFormChange('weight', e.target.value)} placeholder="65" />
               </div>
               <div className="space-y-1">
-                <Label className="text-xs text-zinc-400 font-semibold">Event Category *</Label>
+                <Label className="text-xs text-zinc-400 font-semibold">Event Category</Label>
                 <Select value={studentForm.eventType} onValueChange={(v) => handleStudentFormChange('eventType', v)}>
                   <SelectTrigger><SelectValue placeholder="Select category" /></SelectTrigger>
                   <SelectContent>{EVENT_TYPES.map((et) => <SelectItem key={et} value={et}>{et}</SelectItem>)}</SelectContent>

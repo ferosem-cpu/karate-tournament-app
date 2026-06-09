@@ -18,7 +18,7 @@ import { canManageCategories, beltClass } from '@/lib/constants';
 import { toast } from 'sonner';
 
 export default function CategoriesPage() {
-  const { profile } = useAuth();
+  const { user, profile } = useAuth();
   const canManage = canManageCategories(profile?.role);
 
   const [categories, setCategories] = useState([]);
@@ -39,24 +39,51 @@ export default function CategoriesPage() {
     return () => { u1(); u2(); u3(); };
   }, []);
 
-  const filtered = useMemo(() => categories.filter((c) => {
+  const myTournaments = useMemo(() => {
+    if (!profile) return [];
+    if (profile.role === 'super_admin') return tournaments;
+    return tournaments.filter((t) => t.ownerId === user?.uid);
+  }, [tournaments, profile, user]);
+
+  const myCategories = useMemo(() => {
+    if (!profile) return [];
+    if (profile.role === 'super_admin') return categories;
+    const myTids = new Set(myTournaments.map((t) => t.id));
+    return categories.filter((c) => myTids.has(c.tournamentId));
+  }, [categories, myTournaments, profile]);
+
+  const filtered = useMemo(() => myCategories.filter((c) => {
     const matchSearch = [c.name, c.tournamentName, c.eventType].join(' ').toLowerCase().includes(search.toLowerCase());
     const matchTournament = tournamentFilter === '__all__' || c.tournamentId === tournamentFilter || (tournamentFilter === '__global__' && (!c.tournamentId || c.tournamentId === '__global__'));
     return matchSearch && matchTournament;
-  }), [categories, search, tournamentFilter]);
+  }), [myCategories, search, tournamentFilter]);
 
   const regByCategory = useMemo(() => {
     const m = {}; registrations.forEach((r) => { if (!r.categoryId) return; (m[r.categoryId] ||= []).push(r); }); return m;
   }, [registrations]);
 
   const remove = async (id, name) => {
-    if (!canManage) return toast.error('Only Super Admins / Tournament Creators can delete event categories');
+    const category = categories.find((c) => c.id === id);
+    if (!category) return;
+    const t = tournaments.find((x) => x.id === category.tournamentId);
+    const isOwner = profile?.role === 'super_admin' || (profile?.role === 'tournament_organizer' && t?.ownerId === user?.uid);
+    if (!isOwner) {
+      return toast.error('You only have permission to delete categories for your own tournaments.');
+    }
     if (!confirm(`Delete event category "${name}"?`)) return;
     try { await deleteDoc(doc(db, 'categories', id)); toast.success('Event Category deleted'); }
     catch (e) { toast.error(e.message); }
   };
   const openCreate = () => { if (!canManage) return; setEditing(null); setDialogOpen(true); };
-  const openEdit = (c) => { if (!canManage) return; setEditing(c); setDialogOpen(true); };
+  const openEdit = (c) => {
+    const t = tournaments.find((x) => x.id === c.tournamentId);
+    const isOwner = profile?.role === 'super_admin' || (profile?.role === 'tournament_organizer' && t?.ownerId === user?.uid);
+    if (!isOwner) {
+      return toast.error('You only have permission to edit categories for your own tournaments.');
+    }
+    setEditing(c);
+    setDialogOpen(true);
+  };
   const openAuto = () => { if (!canManage) return; setAutoOpen(true); };
 
   return (
@@ -92,7 +119,7 @@ export default function CategoriesPage() {
           <SelectContent>
             <SelectItem value="__all__">All tournaments</SelectItem>
             <SelectItem value="__global__">Global only</SelectItem>
-            {tournaments.map((t) => <SelectItem key={t.id} value={t.id}>{t.name}</SelectItem>)}
+            {myTournaments.map((t) => <SelectItem key={t.id} value={t.id}>{t.name}</SelectItem>)}
           </SelectContent>
         </Select>
       </div>
@@ -157,8 +184,8 @@ export default function CategoriesPage() {
           </div>
         )}
 
-      <CategoryFormDialog open={dialogOpen} onOpenChange={setDialogOpen} tournaments={tournaments} initial={editing} id={editing?.id} />
-      <AutoCreateCategoriesDialog open={autoOpen} onOpenChange={setAutoOpen} tournaments={tournaments} />
+      <CategoryFormDialog open={dialogOpen} onOpenChange={setDialogOpen} tournaments={myTournaments} initial={editing} id={editing?.id} />
+      <AutoCreateCategoriesDialog open={autoOpen} onOpenChange={setAutoOpen} tournaments={myTournaments} />
     </>
   );
 }

@@ -9,8 +9,7 @@ import { Card, CardContent } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import PageHeader from '@/components/page-header';
-import RefereeApplicationForm from '@/components/referee-application-form';
-import { Trophy, Users, Building2, Grid3x3, ArrowRight, Plus, CalendarDays, Activity } from 'lucide-react';
+import { Trophy, Users, Building2, Grid3x3, ArrowRight, Plus, CalendarDays, Activity, Sparkles } from 'lucide-react';
 import { formatDate, statusColor, statusLabel } from '@/lib/utils';
 import { isAdminOrOrganizer } from '@/lib/constants';
 
@@ -21,7 +20,7 @@ export default function DashboardPage() {
 
   const role = profile?.role || 'spectator';
   const canCreateTournament = isAdminOrOrganizer(role);
-  const showRefereeApplication = role !== 'referee' && role !== 'super_admin' && role !== 'spectator' && role !== 'dojo_admin';
+
 
   useEffect(() => {
     if (!user) return;
@@ -79,11 +78,6 @@ export default function DashboardPage() {
         {role !== 'spectator' && <StatCard icon={Building2} label="Registered Dojos" value={counts.dojos} />}
       </div>
 
-      {showRefereeApplication && (
-        <div className="mb-10">
-          <RefereeApplicationForm />
-        </div>
-      )}
 
       <div className="grid lg:grid-cols-3 gap-6">
         <Card className="lg:col-span-2 border-zinc-800 bg-zinc-950 shadow-lg">
@@ -152,6 +146,9 @@ export default function DashboardPage() {
               )}
               {isAdminOrOrganizer(role) && (
                 <QuickLink href="/dashboard/tatamis" icon={Grid3x3} label="Configure Tatamis" />
+              )}
+              {role !== 'referee' && role !== 'super_admin' && (
+                <QuickLink href="/dashboard/register-referee" icon={Sparkles} label="Register as Referee" />
               )}
             </div>
           </CardContent>

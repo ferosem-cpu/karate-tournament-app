@@ -20,7 +20,7 @@ html, body {
     --popover: 240 8% 98%;
     --popover-foreground: 240 10% 12%;
     --primary: 47 100% 50%;
-    --primary-foreground: 240 10% 100%;
+    --primary-foreground: 240 10% 10%; /* High contrast dark text on gold button */
     --secondary: 240 5% 18%;
     --secondary-foreground: 240 10% 98%;
     --muted: 240 5% 40%;
@@ -41,10 +41,40 @@ html, body {
     --sidebar-background: 240 8% 16%;
     --sidebar-foreground: 240 10% 96%;
     --sidebar-primary: 47 100% 50%;
-    --sidebar-primary-foreground: 240 10% 100%;
+    --sidebar-primary-foreground: 240 10% 10%; /* High contrast dark text on gold button */
     --sidebar-accent: 240 8% 26%;
     --sidebar-accent-foreground: 240 10% 96%;
     --sidebar-border: 240 5% 25%;
+    --sidebar-ring: 47 100% 50%;
+  }
+
+  .dark {
+    --background: 240 10% 3.9%;
+    --foreground: 0 0% 98%;
+    --card: 240 10% 5.9%;
+    --card-foreground: 0 0% 98%;
+    --popover: 240 10% 3.9%;
+    --popover-foreground: 0 0% 98%;
+    --primary: 47 100% 50%;
+    --primary-foreground: 240 10% 10%; /* High contrast dark text on gold button */
+    --secondary: 240 3.7% 15.9%;
+    --secondary-foreground: 0 0% 98%;
+    --muted: 240 3.7% 15.9%;
+    --muted-foreground: 240 5% 64.9%;
+    --accent: 43 80% 42%;
+    --accent-foreground: 0 0% 98%;
+    --destructive: 0 62.8% 30.6%;
+    --destructive-foreground: 0 0% 98%;
+    --border: 240 3.7% 15.9%;
+    --input: 240 3.7% 15.9%;
+    --ring: 47 100% 50%;
+    --sidebar-background: 240 8% 12%;
+    --sidebar-foreground: 240 10% 96%;
+    --sidebar-primary: 47 100% 50%;
+    --sidebar-primary-foreground: 240 10% 10%;
+    --sidebar-accent: 240 8% 18%;
+    --sidebar-accent-foreground: 240 10% 96%;
+    --sidebar-border: 240 5% 18%;
     --sidebar-ring: 47 100% 50%;
   }
 }

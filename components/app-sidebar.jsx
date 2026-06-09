@@ -20,6 +20,7 @@ import {
   Sparkles,
   Lock,
   Trash2,
+  Plus,
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
@@ -113,6 +114,40 @@ export default function AppSidebar({ className, onNavigate }) {
         })}
 
         {role === 'dojo_admin' && (
+          <>
+            <div className="my-3 px-2 py-2 text-xs uppercase font-bold text-sidebar-foreground/50 tracking-wider border-l-3 border-gold-primary/30 pl-3">
+              Dojo Management
+            </div>
+            <Link
+              href="/dashboard/kohai/new"
+              onClick={handleNavClick}
+              className={cn(
+                'group flex items-center gap-3 rounded-md px-3 py-2.5 text-sm font-semibold transition-all',
+                pathname === '/dashboard/kohai/new'
+                  ? 'bg-gold-primary/10 text-sidebar-accent-foreground border-l-3 border-gold-primary'
+                  : 'text-sidebar-foreground/70 hover:text-sidebar-foreground hover:bg-sidebar-accent/80'
+              )}
+            >
+              <Plus className={cn('h-5 w-5', pathname === '/dashboard/kohai/new' ? 'text-gold-primary' : '')} />
+              <span>Register Kohai</span>
+            </Link>
+            <Link
+              href="/dashboard/dojos"
+              onClick={handleNavClick}
+              className={cn(
+                'group flex items-center gap-3 rounded-md px-3 py-2.5 text-sm font-semibold transition-all',
+                pathname === '/dashboard/dojos'
+                  ? 'bg-gold-primary/10 text-sidebar-accent-foreground border-l-3 border-gold-primary'
+                  : 'text-sidebar-foreground/70 hover:text-sidebar-foreground hover:bg-sidebar-accent/80'
+              )}
+            >
+              <Building2 className={cn('h-5 w-5', pathname === '/dashboard/dojos' ? 'text-gold-primary' : '')} />
+              <span>Edit Dojo</span>
+            </Link>
+          </>
+        )}
+
+        {role !== 'referee' && role !== 'super_admin' && (
           <>
             <div className="my-3 px-2 py-2 text-xs uppercase font-bold text-sidebar-foreground/50 tracking-wider border-l-3 border-gold-primary/30 pl-3">
               Referee Application

@@ -1,7 +1,7 @@
 'use client';
 
 import { useState, useEffect } from 'react';
-import { addDoc, collection, doc, serverTimestamp, updateDoc } from 'firebase/firestore';
+import { addDoc, collection, doc, serverTimestamp, updateDoc, getDoc } from 'firebase/firestore';
 import { db } from '@/lib/firebase';
 import { useAuth } from '@/lib/auth-context';
 import { Button } from '@/components/ui/button';
@@ -70,8 +70,23 @@ export default function CategoryFormDialog({ open, onOpenChange, tournaments, in
     if (!form.byAge && !form.byWeight) {
       return toast.error('Please check at least "Create event by age" or "Create event by weight".');
     }
+    if (!form.tournamentId) {
+      return toast.error('Tournament is required');
+    }
     setBusy(true);
     try {
+      if (profile?.role === 'tournament_organizer') {
+        if (form.tournamentId === '__global__') {
+          setBusy(false);
+          return toast.error('Tournament organizers cannot manage global categories.');
+        }
+        const tSnap = await getDoc(doc(db, 'tournaments', form.tournamentId));
+        if (!tSnap.exists() || tSnap.data().ownerId !== user.uid) {
+          setBusy(false);
+          return toast.error('You do not have permission to manage categories for this tournament.');
+        }
+      }
+
       const payload = {
         ...form,
         ageMin: !form.byAge || form.ageMin === '' ? null : Number(form.ageMin),

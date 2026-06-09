@@ -82,16 +82,14 @@ export default function RegisterRefereePage() {
     );
   }
 
-  // Allow dojo_admin, super_admin, and tournament_organizer to apply (for testing and setup)
-  const allowedRoles = ['dojo_admin', 'super_admin', 'tournament_organizer'];
   const userRole = profile?.role || 'spectator';
-  if (!allowedRoles.includes(userRole)) {
+  if (userRole === 'referee' || userRole === 'super_admin') {
     return (
       <div className="max-w-2xl mx-auto py-8">
         <Alert variant="destructive" className="border-red-500/40 bg-red-500/5">
           <ShieldAlert className="h-4 w-4 text-red-400" />
           <AlertDescription className="text-red-300 font-medium">
-            Access Denied. Only Dojo Administrators can submit a referee application from this portal.
+            You are already a {userRole.replace(/_/g, ' ')}. No need to apply.
           </AlertDescription>
         </Alert>
       </div>
@@ -190,8 +188,8 @@ export default function RegisterRefereePage() {
               </p>
             </div>
             <div className="border-t border-zinc-900 pt-6">
-              <Button onClick={() => router.push('/dashboard/dojos')} className="bg-zinc-100 hover:bg-zinc-200 text-zinc-950 font-bold px-6">
-                Back to Dojos
+              <Button onClick={() => router.push('/dashboard')} className="bg-zinc-100 hover:bg-zinc-200 text-zinc-950 font-bold px-6">
+                Back to Dashboard
               </Button>
             </div>
           </CardContent>
@@ -370,7 +368,7 @@ export default function RegisterRefereePage() {
           <Button
             type="button"
             variant="outline"
-            onClick={() => router.push('/dashboard/dojos')}
+            onClick={() => router.push('/dashboard')}
             className="border-zinc-800 text-zinc-300 hover:bg-zinc-900"
           >
             Cancel

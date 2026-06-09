@@ -2,8 +2,8 @@
 
 import { useEffect, useState } from 'react';
 import Link from 'next/link';
-import { useParams } from 'next/navigation';
-import { collection, deleteDoc, doc, onSnapshot, query, where, updateDoc, serverTimestamp } from 'firebase/firestore';
+import { useParams, useRouter } from 'next/navigation';
+import { collection, deleteDoc, doc, onSnapshot, query, where, updateDoc, serverTimestamp, writeBatch, getDocs } from 'firebase/firestore';
 import { db } from '@/lib/firebase';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent } from '@/components/ui/card';
@@ -27,6 +27,7 @@ import permissions from '@/lib/permissions';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from '@/components/ui/dialog';
 export default function TournamentDetailPage() {
   const { id } = useParams();
+  const router = useRouter();
   const { user, profile } = useAuth();
   const [t, setT] = useState(null);
   const [loading, setLoading] = useState(true);
@@ -91,12 +92,16 @@ export default function TournamentDetailPage() {
     catch (e) { toast.error(e.message); }
   };
 
-  const handleToggleRegistration = async () => {
+  const updateStatus = async (newStatus) => {
     if (!t) return;
-    const newStatus = t.status === 'registration_open' ? 'registration_closed' : 'registration_open';
-    const confirmMsg = newStatus === 'registration_closed' 
-      ? 'Are you sure you want to close registration? This will restrict regular registrations.'
-      : 'Are you sure you want to open registration?';
+    let confirmMsg = `Are you sure you want to change status to "${statusLabel(newStatus)}"?`;
+    if (newStatus === 'registration_closed') {
+      confirmMsg = 'Are you sure you want to close registration?';
+    } else if (newStatus === 'live') {
+      confirmMsg = 'Are you sure you want to go live? This will start the tournament brackets and operations.';
+    } else if (newStatus === 'completed') {
+      confirmMsg = 'Are you sure you want to end the tournament? This will finalize all results.';
+    }
     if (!confirm(confirmMsg)) return;
 
     try {
@@ -104,9 +109,43 @@ export default function TournamentDetailPage() {
         status: newStatus,
         updatedAt: serverTimestamp(),
       });
-      toast.success(newStatus === 'registration_closed' ? 'Registration closed' : 'Registration opened');
+      toast.success(`Tournament is now ${statusLabel(newStatus)}`);
     } catch (e) {
-      toast.error(e.message || 'Failed to update registration status');
+      toast.error(e.message || 'Failed to update status');
+    }
+  };
+
+  const handleDeleteTournament = async () => {
+    if (!confirm("Are you absolutely sure you want to permanently delete this tournament? This will also delete all associated categories, tatamis, matches, and registrations. This action cannot be undone.")) return;
+
+    try {
+      const batch = writeBatch(db);
+
+      // 1. Categories
+      const catSnap = await getDocs(query(collection(db, 'categories'), where('tournamentId', '==', id)));
+      catSnap.docs.forEach((d) => batch.delete(doc(db, 'categories', d.id)));
+
+      // 2. Tatamis
+      const tatSnap = await getDocs(query(collection(db, 'tatamis'), where('tournamentId', '==', id)));
+      tatSnap.docs.forEach((d) => batch.delete(doc(db, 'tatamis', d.id)));
+
+      // 3. Registrations
+      const regSnap = await getDocs(query(collection(db, 'tournament_registrations'), where('tournamentId', '==', id)));
+      regSnap.docs.forEach((d) => batch.delete(doc(db, 'tournament_registrations', d.id)));
+
+      // 4. Matches
+      const matchSnap = await getDocs(query(collection(db, 'matches'), where('tournamentId', '==', id)));
+      matchSnap.docs.forEach((d) => batch.delete(doc(db, 'matches', d.id)));
+
+      // 5. The Tournament itself
+      batch.delete(doc(db, 'tournaments', id));
+
+      await batch.commit();
+      toast.success('Tournament and all associated data deleted successfully!');
+      router.push('/dashboard/tournaments');
+    } catch (err) {
+      console.error("Failed to delete tournament:", err);
+      toast.error("Failed to delete tournament: " + err.message);
     }
   };
 
@@ -152,14 +191,29 @@ export default function TournamentDetailPage() {
               <>
                 <Button asChild variant="outline" className="border-amber-500/40 text-amber-300 hover:bg-amber-500/10 hover:text-amber-200"><Link href={`/dashboard/tournaments/${id}/certificates`}><Award className="h-4 w-4 mr-2" /> Certificates</Link></Button>
                 <Button asChild className="bg-red-600 hover:bg-red-700 text-white"><Link href={`/dashboard/tournaments/${id}/live`}><Zap className="h-4 w-4 mr-2" /> Live Operations</Link></Button>
+                {canEdit && t.status === 'draft' && (
+                  <Button onClick={() => updateStatus('registration_open')} className="bg-emerald-600 hover:bg-emerald-700 text-white font-bold">
+                    Publish & Open Reg
+                  </Button>
+                )}
                 {canEdit && t.status === 'registration_open' && (
-                  <Button onClick={handleToggleRegistration} variant="outline" className="border-red-500/40 text-red-300 hover:bg-red-500/10 hover:text-red-200">
+                  <Button onClick={() => updateStatus('registration_closed')} variant="outline" className="border-red-500/40 text-red-300 hover:bg-red-500/10 hover:text-red-200 font-bold">
                     Close Registration
                   </Button>
                 )}
                 {canEdit && t.status === 'registration_closed' && (
-                  <Button onClick={handleToggleRegistration} variant="outline" className="border-emerald-500/40 text-emerald-300 hover:bg-emerald-500/10 hover:text-emerald-200">
-                    Open Registration
+                  <>
+                    <Button onClick={() => updateStatus('registration_open')} variant="outline" className="border-emerald-500/40 text-emerald-300 hover:bg-emerald-500/10 hover:text-emerald-200 font-bold">
+                      Open Registration
+                    </Button>
+                    <Button onClick={() => updateStatus('live')} className="bg-gradient-to-r from-red-500 to-amber-600 hover:from-red-600 hover:to-amber-700 text-white font-bold">
+                      Go Live (Start)
+                    </Button>
+                  </>
+                )}
+                {canEdit && t.status === 'live' && (
+                  <Button onClick={() => updateStatus('completed')} className="bg-gradient-to-r from-zinc-700 to-zinc-900 hover:from-zinc-850 hover:to-zinc-950 text-white font-bold border border-zinc-800">
+                    Complete Tournament
                   </Button>
                 )}
                 {canEdit && (
@@ -168,6 +222,16 @@ export default function TournamentDetailPage() {
                       <Pencil className="h-4 w-4 mr-2" />
                       Edit
                     </Link>
+                  </Button>
+                )}
+                {profile?.role === 'super_admin' && (
+                  <Button
+                    onClick={handleDeleteTournament}
+                    variant="destructive"
+                    className="bg-red-600 hover:bg-red-700 text-white font-bold"
+                  >
+                    <Trash2 className="h-4 w-4 mr-2" />
+                    Delete Tournament
                   </Button>
                 )}
               </>

@@ -3,7 +3,7 @@
 import { useEffect, useState } from 'react';
 import Link from 'next/link';
 import { useParams, useRouter } from 'next/navigation';
-import { doc, onSnapshot } from 'firebase/firestore';
+import { doc, onSnapshot, collection, query, where, getDocs, getDoc } from 'firebase/firestore';
 import { db } from '@/lib/firebase';
 import { useAuth } from '@/lib/auth-context';
 import Protected from '@/components/protected';
@@ -20,21 +20,49 @@ import { toast } from 'sonner';
 
 export default function RefereeConsole() {
   const { matchId } = useParams();
-  const { profile } = useAuth();
+  const { user, profile } = useAuth();
   const [match, setMatch] = useState(null);
   const [loading, setLoading] = useState(true);
+  const [isMatchReferee, setIsMatchReferee] = useState(false);
 
   const canScore =
-    profile?.role === 'referee' || profile?.role === 'super_admin';
+    profile?.role === 'referee' || profile?.role === 'super_admin' || (profile?.role === 'dojo_admin' && isMatchReferee);
 
   useEffect(() => {
-    const unsub = onSnapshot(doc(db, 'matches', matchId), (s) => {
-      if (s.exists()) setMatch({ id: s.id, ...s.data() });
-      else setMatch(null);
+    if (!matchId) return;
+    const unsub = onSnapshot(doc(db, 'matches', matchId), async (s) => {
+      if (s.exists()) {
+        const matchData = { id: s.id, ...s.data() };
+        setMatch(matchData);
+
+        if (user?.uid && matchData.tournamentId) {
+          try {
+            const tSnap = await getDoc(doc(db, 'tournaments', matchData.tournamentId));
+            const tournament = tSnap.exists() ? tSnap.data() : null;
+            if (tournament && tournament.status !== 'completed') {
+              const qRefs = query(
+                collection(db, 'referee_applications'),
+                where('tournamentId', '==', matchData.tournamentId),
+                where('userId', '==', user.uid),
+                where('status', '==', 'approved')
+              );
+              const refsSnap = await getDocs(qRefs);
+              setIsMatchReferee(!refsSnap.empty);
+            } else {
+              setIsMatchReferee(false);
+            }
+          } catch (err) {
+            console.error("Error checking referee application:", err);
+            setIsMatchReferee(false);
+          }
+        }
+      } else {
+        setMatch(null);
+      }
       setLoading(false);
     });
     return () => unsub();
-  }, [matchId]);
+  }, [matchId, user]);
 
   if (loading) return <Protected><div className="min-h-screen flex items-center justify-center"><Loader2 className="h-7 w-7 animate-spin text-primary" /></div></Protected>;
   if (!match) return <Protected><div className="min-h-screen flex items-center justify-center text-muted-foreground">Match not found.</div></Protected>;

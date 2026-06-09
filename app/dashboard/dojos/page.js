@@ -25,25 +25,26 @@ export default function DojosPage() {
   profile?.role === 'tournament_organizer';
 
   useEffect(() => {
+    if (!user) return;
     let q;
 
-if (profile?.role === 'super_admin') {
-  q = query(
-    collection(db, 'dojos'),
-    orderBy('createdAt', 'desc')
-  );
-} else {
-  q = query(
-    collection(db, 'dojos'),
-    where('ownerId', '==', user?.uid)
-  );
-}
+    if (profile?.role === 'super_admin') {
+      q = query(
+        collection(db, 'dojos'),
+        orderBy('createdAt', 'desc')
+      );
+    } else {
+      q = query(
+        collection(db, 'dojos'),
+        where('ownerId', '==', user?.uid)
+      );
+    }
     const unsub = onSnapshot(q, (s) => {
       setDojos(s.docs.map((d) => ({ id: d.id, ...d.data() })));
       setLoading(false);
     }, () => setLoading(false));
     return () => unsub();
-  }, []);
+  }, [user, profile]);
 
   const filtered = dojos.filter((d) => [d.name, d.city, d.instructorName].join(' ').toLowerCase().includes(search.toLowerCase()));
 
@@ -70,7 +71,10 @@ if (profile?.role === 'super_admin') {
             )}
             {canManageDojo && profile?.role !== 'spectator' && (
               <Button asChild className="bg-primary hover:bg-primary/90">
-                <Link href="/dashboard/dojos/new"><Plus className="h-4 w-4 mr-2" /> New Dojo</Link>
+                <Link href="/dashboard/dojos/new">
+                  <Plus className="h-4 w-4 mr-2" />
+                  {profile?.role === 'dojo_admin' && dojos.length > 0 ? 'Add Additional Dojo' : 'New Dojo'}
+                </Link>
               </Button>
             )}
           </div>
@@ -100,7 +104,10 @@ if (profile?.role === 'super_admin') {
             )}
             {canManageDojo && profile?.role !== 'spectator' && (
               <Button asChild className="bg-primary hover:bg-primary/90">
-                <Link href="/dashboard/dojos/new"><Plus className="h-4 w-4 mr-2" /> Create Dojo</Link>
+                <Link href="/dashboard/dojos/new">
+                  <Plus className="h-4 w-4 mr-2" />
+                  {profile?.role === 'dojo_admin' && dojos.length > 0 ? 'Add Additional Dojo' : 'Create Dojo'}
+                </Link>
               </Button>
             )}
           </div>

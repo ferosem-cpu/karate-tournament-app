@@ -2,7 +2,7 @@
 
 import { useState, useEffect } from 'react';
 import { useAuth } from '@/lib/auth-context';
-import { collection, doc, serverTimestamp, writeBatch } from 'firebase/firestore';
+import { collection, doc, serverTimestamp, writeBatch, getDoc } from 'firebase/firestore';
 import { db } from '@/lib/firebase';
 import { Button } from '@/components/ui/button';
 import { Label } from '@/components/ui/label';
@@ -56,6 +56,10 @@ export default function AutoCreateCategoriesDialog({ open, onOpenChange, tournam
 
     const t = tournaments.find((x) => x.id === tournamentId);
     if (!t) return;
+
+    if (profile?.role === 'tournament_organizer' && t.ownerId !== user.uid) {
+      return toast.error('You do not have permission to manage categories for this tournament.');
+    }
 
     setBusy(true);
     try {

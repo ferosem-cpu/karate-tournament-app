@@ -1,7 +1,7 @@
 'use client';
 
 import { useState, useEffect } from 'react';
-import { addDoc, collection, doc, serverTimestamp, updateDoc } from 'firebase/firestore';
+import { addDoc, collection, doc, serverTimestamp, updateDoc, getDoc, query, where, getDocs } from 'firebase/firestore';
 import { db } from '@/lib/firebase';
 import { useAuth } from '@/lib/auth-context';
 import { Button } from '@/components/ui/button';
@@ -22,7 +22,8 @@ const STATUSES = [
 export default function TatamiFormDialog({ open, onOpenChange, tournaments, initial, id, lockedTournamentId }) {
   const { user, profile } = useAuth();
   const [busy, setBusy] = useState(false);
-  const [form, setForm] = useState({ name: '', tournamentId: '', tournamentName: '', status: 'active', assignedRefereeName: '', notes: '', streamingUrl: '' });
+  const [form, setForm] = useState({ name: '', tournamentId: '', tournamentName: '', status: 'active', assignedRefereeName: '', assignedRefereeId: '', notes: '', streamingUrl: '' });
+  const [referees, setReferees] = useState([]);
 
   useEffect(() => {
     if (initial) setForm({
@@ -31,6 +32,7 @@ export default function TatamiFormDialog({ open, onOpenChange, tournaments, init
       tournamentName: initial.tournamentName || '',
       status: initial.status || 'active',
       assignedRefereeName: initial.assignedRefereeName || '',
+      assignedRefereeId: initial.assignedRefereeId || '',
       notes: initial.notes || '',
       streamingUrl: initial.streamingUrl || '',
     });
@@ -40,15 +42,50 @@ export default function TatamiFormDialog({ open, onOpenChange, tournaments, init
       tournamentName: tournaments.find((t) => t.id === lockedTournamentId)?.name || '', 
       status: 'active', 
       assignedRefereeName: '', 
+      assignedRefereeId: '',
       notes: '',
       streamingUrl: '',
     });
   }, [initial, open, lockedTournamentId, tournaments]);
 
+  useEffect(() => {
+    if (!form.tournamentId) return;
+    const fetchTournamentReferees = async () => {
+      try {
+        const q = query(
+          collection(db, 'referee_applications'),
+          where('tournamentId', '==', form.tournamentId),
+          where('status', '==', 'approved')
+        );
+        const snap = await getDocs(q);
+        let list = snap.docs.map((d) => ({
+          id: d.data().userId,
+          name: d.data().fullName || d.data().name || 'Sensei',
+        }));
+
+        if (list.length === 0) {
+          const qAll = query(
+            collection(db, 'users'),
+            where('role', '==', 'referee')
+          );
+          const snapAll = await getDocs(qAll);
+          list = snapAll.docs.map((d) => ({
+            id: d.id,
+            name: d.data().displayName || d.data().fullName || d.data().email || 'Sensei',
+          }));
+        }
+        setReferees(list);
+      } catch (err) {
+        console.error("Error fetching referees:", err);
+      }
+    };
+    fetchTournamentReferees();
+  }, [form.tournamentId]);
+
   const set = (k, v) => setForm((f) => ({ ...f, [k]: v }));
   const onTournamentChange = (tid) => {
     const t = tournaments.find((x) => x.id === tid);
-    setForm((f) => ({ ...f, tournamentId: tid, tournamentName: t?.name || '' }));
+    setForm((f) => ({ ...f, tournamentId: tid, tournamentName: t?.name || '', assignedRefereeId: '', assignedRefereeName: '' }));
   };
 
   const submit = async (e) => {
@@ -61,6 +98,14 @@ export default function TatamiFormDialog({ open, onOpenChange, tournaments, init
     if (!form.assignedRefereeName.trim()) return toast.error('Assigned Referee is required');
     setBusy(true);
     try {
+      if (profile?.role === 'tournament_organizer') {
+        const tSnap = await getDoc(doc(db, 'tournaments', form.tournamentId));
+        if (!tSnap.exists() || tSnap.data().ownerId !== user.uid) {
+          setBusy(false);
+          return toast.error('You do not have permission to manage tatamis for this tournament.');
+        }
+      }
+
       const payload = { ...form, updatedAt: serverTimestamp(), ownerId: user.uid };
       if (id) {
         await updateDoc(doc(db, 'tatamis', id), payload);
@@ -101,7 +146,28 @@ export default function TatamiFormDialog({ open, onOpenChange, tournaments, init
                 <SelectContent>{STATUSES.map((s) => <SelectItem key={s.value} value={s.value}>{s.label}</SelectItem>)}</SelectContent>
               </Select>
             </F>
-            <F label="Assigned Referee *"><Input value={form.assignedRefereeName} onChange={(e) => set('assignedRefereeName', e.target.value)} required placeholder="Sensei name" /></F>
+            <F label="Assigned Referee *">
+              <Select
+                value={form.assignedRefereeId || undefined}
+                onValueChange={(val) => {
+                  const ref = referees.find((r) => r.id === val);
+                  setForm((f) => ({
+                    ...f,
+                    assignedRefereeId: val,
+                    assignedRefereeName: ref ? ref.name : 'Unassigned',
+                  }));
+                }}
+              >
+                <SelectTrigger>
+                  <SelectValue placeholder="Select Referee…" />
+                </SelectTrigger>
+                <SelectContent className="max-h-56 bg-zinc-950 text-zinc-100 border-zinc-850">
+                  {referees.map((r) => (
+                    <SelectItem key={r.id} value={r.id}>{r.name}</SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </F>
           </div>
           <F label="Notes"><Input value={form.notes} onChange={(e) => set('notes', e.target.value)} placeholder="Optional notes…" /></F>
           <F label="Live Stream URL (Optional)"><Input type="url" value={form.streamingUrl || ''} onChange={(e) => set('streamingUrl', e.target.value)} placeholder="https://youtube.com/live/..." /></F>

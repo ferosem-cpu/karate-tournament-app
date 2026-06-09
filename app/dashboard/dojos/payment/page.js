@@ -2,8 +2,9 @@
 
 import { useState } from 'react';
 import { useRouter } from 'next/navigation';
-import { doc, setDoc, serverTimestamp } from 'firebase/firestore';
+import { doc, updateDoc, serverTimestamp } from 'firebase/firestore';
 import { db } from '@/lib/firebase';
+import { createOrganizerLicense } from '@/lib/organizer-license-service';
 import { useAuth } from '@/lib/auth-context';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
@@ -36,16 +37,13 @@ export default function PaymentPage() {
 
     try {
       const userRef = doc(db, 'users', user.uid);
-      await setDoc(userRef, {
+      await updateDoc(userRef, {
         role: 'tournament_organizer',
-        organizerLicense: {
-          active: true,
-          activatedAt: serverTimestamp(),
-          amountPaid: 99,
-          currency: 'USD',
-        },
         updatedAt: serverTimestamp(),
-      }, { merge: true });
+      });
+
+      // Create organizer license using the service helper (basic plan, 1 month)
+      await createOrganizerLicense(user.uid, 'basic', 1);
 
       toast.success('Payment processed successfully! Profile upgraded to Tournament Organizer.');
       
