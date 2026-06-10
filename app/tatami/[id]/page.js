@@ -51,7 +51,12 @@ export default function TatamiOpsScreen() {
   const SIcon = meta.icon;
 
   const active = matches.find((m) => m.status === 'active' || m.status === 'paused' || m.status === 'on_tatami');
-  const queued = matches.filter((m) => (m.status === 'queued' || m.status === 'called') && !m.isBye).sort((a, b) => (a.round - b.round) || (a.matchInRound - b.matchInRound));
+  const queued = matches.filter((m) => (m.status === 'queued' || m.status === 'called') && !m.isBye).sort((a, b) => {
+    if (a.queueOrder !== undefined && b.queueOrder !== undefined) {
+      return a.queueOrder - b.queueOrder;
+    }
+    return (a.round - b.round) || (a.matchInRound - b.matchInRound);
+  });
   const onDeck = queued.slice(0, 3);
   const upcoming = queued.slice(3, 10);
   const recent = matches.filter((m) => m.status === 'completed' || m.status === 'verified').sort((a, b) => (b.completedAt?.toMillis?.() || 0) - (a.completedAt?.toMillis?.() || 0)).slice(0, 5);

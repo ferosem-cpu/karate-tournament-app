@@ -102,7 +102,12 @@ export default function LiveTournamentDashboard() {
   }
 
   const liveMatches = matches.filter((m) => m.status === 'active' || m.status === 'paused');
-  const queuedMatches = matches.filter((m) => m.status === 'queued' && !m.isBye);
+  const queuedMatches = matches.filter((m) => m.status === 'queued' && !m.isBye).sort((a, b) => {
+    if (a.queueOrder !== undefined && b.queueOrder !== undefined) {
+      return a.queueOrder - b.queueOrder;
+    }
+    return (a.round - b.round) || (a.matchInRound - b.matchInRound);
+  });
   const completedMatches = matches.filter((m) => m.status === 'completed' || m.status === 'verified');
 
   return (

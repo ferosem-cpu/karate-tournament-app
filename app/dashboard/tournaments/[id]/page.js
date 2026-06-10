@@ -31,7 +31,8 @@ import {
   filterDisplayedRegistrations,
   tournamentRequiresApproval,
 } from '@/lib/tournament-registrations';
-import { Pencil, ExternalLink, Calendar, MapPin, FileText, Trophy, Copy, Grid3x3, Users, Plus, Tags, Trash2, Zap, Award, Building2 } from 'lucide-react';
+import { Pencil, ExternalLink, Calendar, MapPin, FileText, Trophy, Copy, Grid3x3, Users, Plus, Tags, Trash2, Zap, Award, Building2, Wand2, Loader2 } from 'lucide-react';
+import { autoGenerateBracketsAndAssign } from '@/lib/match-engine';
 import { toast } from 'sonner';
 import { formatDate, statusColor, statusLabel, cn } from '@/lib/utils';
 import { beltClass, isSpectator } from '@/lib/constants';
@@ -52,6 +53,7 @@ export default function TournamentDetailPage() {
   const [myDojo, setMyDojo] = useState(null);
   const [dojosListOpen, setDojosListOpen] = useState(false);
   const [categoriesListOpen, setCategoriesListOpen] = useState(false);
+  const [autoAssignBusy, setAutoAssignBusy] = useState(false);
 
   useEffect(() => {
     if (!user?.uid) return;
@@ -103,6 +105,19 @@ export default function TournamentDetailPage() {
     if (!confirm(`Remove ${name} from this tournament?`)) return;
     try { await deleteDoc(doc(db, 'tournament_registrations', rid)); toast.success('Removed'); }
     catch (e) { toast.error(e.message); }
+  };
+
+  const handleAutoGenerateAndAssign = async () => {
+    if (!confirm('This will auto-generate brackets for all categories with approved registrations, randomly assign referees to tatamis, and assign matches to tatamis according to queue priority rules. It will clear any existing matches for this tournament. Proceed?')) return;
+    setAutoAssignBusy(true);
+    try {
+      const matchCount = await autoGenerateBracketsAndAssign({ tournamentId: id, userId: user.uid });
+      toast.success(`Brackets and tatami queue successfully generated! Created ${matchCount} matches.`);
+    } catch (e) {
+      toast.error(e.message || 'Auto-assignment failed');
+    } finally {
+      setAutoAssignBusy(false);
+    }
   };
 
   const updateStatus = async (newStatus) => {
@@ -252,6 +267,10 @@ export default function TournamentDetailPage() {
                   <>
                     <Button onClick={() => updateStatus('registration_open')} variant="outline" className="border-emerald-500/40 text-emerald-300 hover:bg-emerald-500/10 hover:text-emerald-200 font-bold">
                       Open Registration
+                    </Button>
+                    <Button onClick={handleAutoGenerateAndAssign} disabled={autoAssignBusy} className="bg-amber-600 hover:bg-amber-700 text-white font-bold">
+                      {autoAssignBusy ? <Loader2 className="h-4 w-4 animate-spin mr-2" /> : <Wand2 className="h-4 w-4 mr-2" />}
+                      Auto-Assign Brackets & Tatamis
                     </Button>
                     <Button onClick={() => updateStatus('live')} className="bg-gradient-to-r from-red-500 to-amber-600 hover:from-red-600 hover:to-amber-700 text-white font-bold">
                       Go Live (Start)

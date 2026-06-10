@@ -8,7 +8,7 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from '
 import { Textarea } from '@/components/ui/textarea';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { Play, Pause, Trophy, AlertTriangle, X, Minus, Lock, ShieldAlert } from 'lucide-react';
-import { startMatchTimer, pauseMatchTimer, resumeMatchTimer, updateMatchScore, completeKumiteMatch } from '@/lib/match-engine';
+import { startMatchTimer, pauseMatchTimer, resumeMatchTimer, updateMatchScore, completeKumiteMatch, updateMatchTimerDuration } from '@/lib/match-engine';
 import { KUMITE_PENALTIES, KUMITE_POINTS, beltClass } from '@/lib/constants';
 import { toast } from 'sonner';
 
@@ -138,6 +138,43 @@ export default function KumiteScoreboard({ match }) {
           </div>
           {!scoringEnabled && !isFinished && (
             <div className="mt-4 inline-flex items-center gap-2 text-xs text-amber-300"><Lock className="h-3.5 w-3.5" /> Scoring is locked. Start the match to enable.</div>
+          )}
+
+          {!isFinished && (
+            <div className="mt-6 border-t border-zinc-800/85 pt-4 flex flex-col items-center gap-2">
+              <div className="text-[10px] uppercase tracking-wider text-muted-foreground font-semibold">Edit Match Duration</div>
+              <div className="flex flex-wrap justify-center gap-1.5">
+                {[
+                  { label: '30s', val: 30 },
+                  { label: '60s', val: 60 },
+                  { label: '90s', val: 90 },
+                  { label: '120s', val: 120 },
+                  { label: '150s', val: 150 },
+                  { label: '3m', val: 180 }
+                ].map((preset) => (
+                  <Button
+                    key={preset.val}
+                    variant={duration === preset.val ? 'default' : 'outline'}
+                    size="sm"
+                    onClick={async () => {
+                      try {
+                        await updateMatchTimerDuration(match.id, preset.val);
+                        toast.success(`Match duration updated to ${preset.label}`);
+                      } catch (e) {
+                        toast.error(e.message);
+                      }
+                    }}
+                    className={`h-8 px-3 text-xs font-semibold transition ${
+                      duration === preset.val
+                        ? 'bg-amber-500 text-black hover:bg-amber-400 border-amber-500 shadow-lg shadow-amber-500/10'
+                        : 'border-zinc-800 hover:bg-zinc-800/50 text-zinc-300'
+                    }`}
+                  >
+                    {preset.label}
+                  </Button>
+                ))}
+              </div>
+            </div>
           )}
         </CardContent>
       </Card>
