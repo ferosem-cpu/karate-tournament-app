@@ -2,7 +2,7 @@
 
 import Link from 'next/link';
 import { useEffect, useState } from 'react';
-import { collection, deleteDoc, doc, onSnapshot, orderBy, query, where } from 'firebase/firestore';
+import { collection, deleteDoc, doc, onSnapshot, orderBy, query, where, writeBatch } from 'firebase/firestore';
 import { db } from '@/lib/firebase';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent } from '@/components/ui/card';
@@ -16,6 +16,7 @@ import { beltClass } from '@/lib/constants';
 import { toast } from 'sonner';
 import { formatDate } from '@/lib/utils';
 import { useAuth } from '@/lib/auth-context';
+import { Checkbox } from '@/components/ui/checkbox';
 
 export default function KohaiPage() {
   const [athletes, setAthletes] = useState([]);
@@ -23,6 +24,11 @@ export default function KohaiPage() {
   const [search, setSearch] = useState('');
   const { profile, user } = useAuth();
   const [ownedDojoIds, setOwnedDojoIds] = useState(new Set());
+  const [selectedIds, setSelectedIds] = useState([]);
+
+  useEffect(() => {
+    setSelectedIds([]);
+  }, [search]);
 
   const canManageKohai =
     profile?.role === 'super_admin' ||
@@ -102,6 +108,38 @@ export default function KohaiPage() {
     })
     .filter((a) => [a.fullName, a.dojoName, a.belt].join(' ').toLowerCase().includes(search.toLowerCase()));
 
+  const handleSelectAll = (checked) => {
+    if (checked) {
+      setSelectedIds(filtered.map((a) => a.id));
+    } else {
+      setSelectedIds([]);
+    }
+  };
+
+  const handleSelectOne = (id, checked) => {
+    if (checked) {
+      setSelectedIds((prev) => [...prev, id]);
+    } else {
+      setSelectedIds((prev) => prev.filter((x) => x !== id));
+    }
+  };
+
+  const handleBulkDelete = async () => {
+    if (selectedIds.length === 0) return;
+    if (!confirm(`Are you absolutely sure you want to permanently delete the ${selectedIds.length} selected Kohais? This action cannot be undone.`)) return;
+    try {
+      const batch = writeBatch(db);
+      selectedIds.forEach((id) => {
+        batch.delete(doc(db, 'athletes', id));
+      });
+      await batch.commit();
+      toast.success(`${selectedIds.length} Kohais successfully deleted.`);
+      setSelectedIds([]);
+    } catch (e) {
+      toast.error(e.message || 'Bulk deletion failed');
+    }
+  };
+
   const remove = async (athlete) => {
     if (!canModifyAthlete(athlete)) {
       toast.error('Access Denied. You do not have permission to delete this competitor.');
@@ -147,6 +185,12 @@ export default function KohaiPage() {
           <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
           <Input className="pl-9" placeholder="Search by name, dojo, belt…" value={search} onChange={(e) => setSearch(e.target.value)} />
         </div>
+        {profile?.role === 'super_admin' && selectedIds.length > 0 && (
+          <Button onClick={handleBulkDelete} variant="destructive" className="bg-red-600 hover:bg-red-700 text-white font-bold">
+            <Trash2 className="h-4 w-4 mr-2" />
+            Delete Selected ({selectedIds.length})
+          </Button>
+        )}
       </div>
 
       <Card className="border-border/60">
@@ -170,6 +214,14 @@ export default function KohaiPage() {
               <Table>
                 <TableHeader>
                   <TableRow>
+                    {profile?.role === 'super_admin' && (
+                      <TableHead className="w-[50px] pr-0">
+                        <Checkbox
+                          checked={filtered.length > 0 && selectedIds.length === filtered.length}
+                          onCheckedChange={(checked) => handleSelectAll(!!checked)}
+                        />
+                      </TableHead>
+                    )}
                     <TableHead>Kohai</TableHead>
                     <TableHead>Dojo</TableHead>
                     <TableHead>Belt</TableHead>
@@ -182,6 +234,14 @@ export default function KohaiPage() {
                 <TableBody>
                   {filtered.map((a) => (
                     <TableRow key={a.id} className="hover:bg-secondary/30">
+                      {profile?.role === 'super_admin' && (
+                        <TableCell className="pr-0">
+                          <Checkbox
+                            checked={selectedIds.includes(a.id)}
+                            onCheckedChange={(checked) => handleSelectOne(a.id, !!checked)}
+                          />
+                        </TableCell>
+                      )}
                       <TableCell>
                         <div className="flex items-center gap-3">
                           <Avatar className="h-9 w-9">
