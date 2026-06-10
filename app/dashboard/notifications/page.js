@@ -1,7 +1,7 @@
 'use client';
 
-import { useEffect, useState } from 'react';
-import { addDoc, collection, deleteDoc, doc, onSnapshot, orderBy, query, serverTimestamp } from 'firebase/firestore';
+import { useEffect, useState, useMemo } from 'react';
+import { addDoc, collection, deleteDoc, doc, onSnapshot, orderBy, query, serverTimestamp, where } from 'firebase/firestore';
 import { db } from '@/lib/firebase';
 import { useAuth } from '@/lib/auth-context';
 import { Button } from '@/components/ui/button';
@@ -19,17 +19,58 @@ import { toast } from 'sonner';
 import { formatDate } from '@/lib/utils';
 
 export default function NotificationsPage() {
-  const { user } = useAuth();
+  const { user, profile } = useAuth();
   const [items, setItems] = useState([]);
   const [open, setOpen] = useState(false);
   const [form, setForm] = useState({ type: 'tournament_announcement', subject: '', body: '', recipientEmail: '', tournamentId: '' });
   const [tournaments, setTournaments] = useState([]);
+  const [ownedDojos, setOwnedDojos] = useState([]);
+
+  useEffect(() => {
+    if (!user?.uid) return;
+    const q = query(collection(db, 'dojos'), where('ownerId', '==', user.uid));
+    const unsubDojo = onSnapshot(q, (s) => {
+      setOwnedDojos(s.docs.map(d => d.id));
+    });
+    return () => unsubDojo();
+  }, [user?.uid]);
 
   useEffect(() => {
     const u1 = onSnapshot(query(collection(db, 'notifications'), orderBy('createdAt', 'desc')), (s) => setItems(s.docs.map((d) => ({ id: d.id, ...d.data() }))));
     const u2 = onSnapshot(collection(db, 'tournaments'), (s) => setTournaments(s.docs.map((d) => ({ id: d.id, ...d.data() }))));
     return () => { u1(); u2(); };
   }, []);
+
+  const filteredItems = useMemo(() => {
+    return items.filter((n) => {
+      // 1. If the user created the notification, they can always see it
+      if (n.createdBy === user?.uid) return true;
+
+      // 2. If it is specifically addressed to the user's email
+      if (n.recipientEmail && n.recipientEmail.toLowerCase() === user?.email?.toLowerCase()) return true;
+
+      // 3. If it is a registration approval, only the dojo admin of that dojo or the creator of the request can see it
+      if (n.type === 'registration_approval') {
+        const isDojoOwner = n.dojoId && ownedDojos.includes(n.dojoId);
+        const isCreator = n.createdBy === user?.uid;
+        return isDojoOwner || isCreator;
+      }
+
+      // 4. Super admin can see all
+      if (profile?.role === 'super_admin') return true;
+
+      // 5. For tournament organizers, let them see notifications/drafts for their owned tournaments or announcements they made
+      if (profile?.role === 'tournament_organizer') {
+        const isTournamentOwner = n.tournamentId && tournaments.some(t => t.id === n.tournamentId && t.ownerId === user?.uid);
+        if (isTournamentOwner) return true;
+      }
+
+      // 6. Public announcements with no recipient can be seen by all logged-in users
+      if (!n.recipientEmail && n.type === 'tournament_announcement' && n.status !== 'draft') return true;
+
+      return false;
+    });
+  }, [items, user, profile, ownedDojos, tournaments]);
 
   const set = (k, v) => setForm((f) => ({ ...f, [k]: v }));
 
@@ -69,7 +110,7 @@ export default function NotificationsPage() {
       </div>
 
       <Card className="border-border/60"><CardContent className="p-0">
-        {items.length === 0 ? (
+        {filteredItems.length === 0 ? (
           <div className="p-16 text-center">
             <Bell className="h-12 w-12 mx-auto text-primary mb-3" />
             <h3 className="font-semibold text-lg">No notifications yet</h3>
@@ -78,7 +119,7 @@ export default function NotificationsPage() {
           </div>
         ) : (
           <div className="divide-y divide-border">
-            {items.map((n) => {
+            {filteredItems.map((n) => {
               const meta = NOTIFICATION_TYPES.find((t) => t.value === n.type) || { label: n.type };
               return (
                 <div key={n.id} className="p-4 hover:bg-secondary/30">
