@@ -162,30 +162,11 @@ export default function TournamentDetailPage() {
     }
   };
 
-  if (loading) return <div className="text-muted-foreground text-sm">Loading…</div>;
-  if (!t) return <div className="text-muted-foreground text-sm">Tournament not found.</div>;
-
-  if (t.status === 'draft') {
-    const isOwner = user?.uid && t.ownerId === user.uid;
-    const isSuperAdmin = profile?.role === 'super_admin';
-    if (!isOwner && !isSuperAdmin) {
-      return (
-        <div className="p-8 text-center text-muted-foreground py-20">
-          <Trophy className="h-12 w-12 text-muted-foreground mx-auto mb-3" />
-          <h3 className="font-bold text-lg text-zinc-300">Access Restricted</h3>
-          <p className="text-sm text-zinc-500 mt-1 max-w-md mx-auto">
-            This tournament is currently in draft mode. Only the organizer and super admins can manage it.
-          </p>
-        </div>
-      );
-    }
-  }
-  
   const canEdit = permissions.canEditTournament(profile?.uid, profile?.role, t);
   const spectatorViewOnly = isSpectator(profile?.role);
   const requiresApproval = tournamentRequiresApproval(t);
   const categoryStatLink = spectatorViewOnly ? null : `/dashboard/tournaments/${id}/setup/categories`;
-  const tatamiStatLink = spectatorViewOnly ? null : `/dashboard/tournaments/${id}/setup/tatamis`;
+  const tatamiStatLink = spectatorViewOnly ? null : `/dashboard/tournaments/[id]/setup/tatamis`;
   const displayedRegistrations = filterDisplayedRegistrations(registrations).filter(
     (r) => r.status !== 'rejected'
   );
@@ -223,6 +204,25 @@ export default function TournamentDetailPage() {
     '#A1A1AA', // Matte Grey
     '#E4E4E7'  // Pearl White
   ];
+
+  if (loading) return <div className="text-muted-foreground text-sm">Loading…</div>;
+  if (!t) return <div className="text-muted-foreground text-sm">Tournament not found.</div>;
+
+  if (t.status === 'draft') {
+    const isOwner = user?.uid && t.ownerId === user.uid;
+    const isSuperAdmin = profile?.role === 'super_admin';
+    if (!isOwner && !isSuperAdmin) {
+      return (
+        <div className="p-8 text-center text-muted-foreground py-20">
+          <Trophy className="h-12 w-12 text-muted-foreground mx-auto mb-3" />
+          <h3 className="font-bold text-lg text-zinc-300">Access Restricted</h3>
+          <p className="text-sm text-zinc-500 mt-1 max-w-md mx-auto">
+            This tournament is currently in draft mode. Only the organizer and super admins can manage it.
+          </p>
+        </div>
+      );
+    }
+  }
 
   return (
     <>
