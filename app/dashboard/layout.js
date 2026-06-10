@@ -4,7 +4,6 @@ import React from 'react';
 import { useRouter } from 'next/navigation';
 import { useAuth } from '@/lib/auth-context';
 import { Loader2, Menu } from 'lucide-react';
-import SpectatorOnboarding from '@/components/spectator-onboarding';
 import AppSidebar from '@/components/app-sidebar';
 import Protected from '@/components/protected';
 import { Sheet, SheetContent } from '@/components/ui/sheet';
@@ -42,20 +41,6 @@ export default function DashboardLayout({ children }) {
       <div className="flex min-h-screen bg-zinc-950 items-center justify-center text-zinc-400">
         <Loader2 className="h-8 w-8 animate-spin text-primary mr-2" />
         <span>Redirecting to sign in...</span>
-      </div>
-    );
-  }
-
-  const alreadyOnboarded = !!profile?.onboardedRoleSelection;
-  if (profile?.role === 'spectator' && !alreadyOnboarded && !sessionOnboarded) {
-    return (
-      <div className="flex min-h-screen bg-zinc-950 items-center justify-center p-4">
-        <SpectatorOnboarding
-          onComplete={() => {
-            sessionStorage.setItem('sessionOnboarded', 'true');
-            window.location.reload();
-          }}
-        />
       </div>
     );
   }

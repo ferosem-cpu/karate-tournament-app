@@ -1,9 +1,22 @@
 'use client';
 
-import { useEffect, useState } from 'react';
+import { useEffect, useState, useMemo } from 'react';
 import Link from 'next/link';
 import { useParams, useRouter } from 'next/navigation';
 import { collection, deleteDoc, doc, onSnapshot, query, where, updateDoc, serverTimestamp, writeBatch, getDocs } from 'firebase/firestore';
+import { 
+  BarChart, 
+  Bar, 
+  XAxis, 
+  YAxis, 
+  ResponsiveContainer, 
+  Tooltip, 
+  PieChart, 
+  Pie, 
+  Cell, 
+  Legend 
+} from 'recharts';
+import { BarChart3 } from 'lucide-react';
 import { db } from '@/lib/firebase';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent } from '@/components/ui/card';
@@ -178,6 +191,39 @@ export default function TournamentDetailPage() {
   );
   const participatingDojos = Array.from(new Set(displayedRegistrations.map((r) => r.dojoName).filter(Boolean)));
 
+  const isOrgOrAdmin = profile?.role === 'super_admin' || (profile?.role === 'tournament_organizer' && t?.ownerId === user?.uid);
+
+  // Helper aggregate function
+  const aggregate = (arr, fn) => {
+    if (!arr || !Array.isArray(arr) || arr.length === 0) return [];
+    const m = {};
+    arr.forEach((x) => { 
+      if (x) {
+        const k = fn(x); 
+        m[k] = (m[k] || 0) + 1; 
+      }
+    });
+    return Object.entries(m)
+      .map(([name, value]) => ({ name, value }))
+      .sort((a, b) => b.value - a.value);
+  };
+
+  const categoryDist = useMemo(() => aggregate(displayedRegistrations, (r) => r.categoryName || 'Unassigned'), [displayedRegistrations]);
+  const dojoDist = useMemo(() => aggregate(displayedRegistrations, (r) => r.dojoName || 'Unassigned').slice(0, 8), [displayedRegistrations]);
+  const beltDist = useMemo(() => aggregate(displayedRegistrations, (r) => r.athleteBelt || 'Unspecified'), [displayedRegistrations]);
+  const genderDist = useMemo(() => aggregate(displayedRegistrations, (r) => r.athleteGender || 'Unspecified'), [displayedRegistrations]);
+  const eventDist = useMemo(() => aggregate(displayedRegistrations, (r) => r.athleteEventType || 'Unspecified'), [displayedRegistrations]);
+
+  const CHART_COLORS = [
+    '#C5A059', // Champagne Gold
+    '#9C7A3C', // Burnished Bronze
+    '#DFBA73', // Light Brass
+    '#4B5563', // Platinum Charcoal
+    '#71717A', // Brushed Silver
+    '#A1A1AA', // Matte Grey
+    '#E4E4E7'  // Pearl White
+  ];
+
   return (
     <>
       <PageHeader
@@ -189,6 +235,7 @@ export default function TournamentDetailPage() {
             <Button asChild variant="outline"><Link href={`/t/${id}`} target="_blank"><ExternalLink className="h-4 w-4 mr-2" /> Public Page</Link></Button>
             {!spectatorViewOnly && (
               <>
+                <Button asChild variant="outline" className="border-[#C5A059]/40 text-[#DFBA73] hover:bg-[#C5A059]/10 hover:text-[#C5A059]"><Link href={`/dashboard/reports?tournamentId=${id}`}><BarChart3 className="h-4 w-4 mr-2" /> Reports</Link></Button>
                 <Button asChild variant="outline" className="border-amber-500/40 text-amber-300 hover:bg-amber-500/10 hover:text-amber-200"><Link href={`/dashboard/tournaments/${id}/certificates`}><Award className="h-4 w-4 mr-2" /> Certificates</Link></Button>
                 <Button asChild className="bg-red-600 hover:bg-red-700 text-white"><Link href={`/dashboard/tournaments/${id}/live`}><Zap className="h-4 w-4 mr-2" /> Live Operations</Link></Button>
                 {canEdit && t.status === 'draft' && (
@@ -388,6 +435,126 @@ export default function TournamentDetailPage() {
           )}
         </CardContent>
       </Card>
+
+      {/* Reports & Analytics Section */}
+      {isOrgOrAdmin && (
+        <Card className="border-border/60 mb-6 bg-zinc-950/40">
+          <CardContent className="p-6">
+            <div className="flex flex-col sm:flex-row sm:items-center justify-between mb-6 border-b border-zinc-800 pb-4 gap-3">
+              <div>
+                <h3 className="text-xl font-bold tracking-tight text-zinc-150">Tournament Reports & Analytics</h3>
+                <p className="text-xs text-muted-foreground mt-0.5">Real-time competitor metrics and splits for this tournament</p>
+              </div>
+              <Button asChild variant="outline" className="border-[#C5A059]/40 text-[#DFBA73] hover:bg-[#C5A059]/10">
+                <Link href={`/dashboard/reports?tournamentId=${id}`}>
+                  <BarChart3 className="h-4 w-4 mr-2" />
+                  View Full Screen Report
+                </Link>
+              </Button>
+            </div>
+
+            {displayedRegistrations.length === 0 ? (
+              <div className="h-[200px] flex flex-col items-center justify-center text-center p-6 border-2 border-dashed border-[#C5A059]/20 rounded-xl bg-zinc-950/20">
+                <BarChart3 className="h-8 w-8 text-[#C5A059] opacity-70 mb-2 animate-pulse" />
+                <p className="font-bold text-sm text-zinc-300">No analytical data available</p>
+                <p className="text-[10px] text-zinc-500 mt-1 uppercase tracking-widest font-semibold">Awaiting active tournament registrations</p>
+              </div>
+            ) : (
+              <div className="space-y-8">
+                {/* Top Visualizations */}
+                <div className="grid lg:grid-cols-2 gap-6">
+                  {/* Registrations per Category */}
+                  <div className="border border-zinc-800 bg-zinc-950/45 p-5 rounded-xl">
+                    <h4 className="text-sm font-bold mb-3 text-zinc-200">Registrations per Category</h4>
+                    <ResponsiveContainer width="100%" height={240}>
+                      <BarChart data={categoryDist} margin={{ left: -10, right: 10, bottom: 20 }}>
+                        <XAxis 
+                          dataKey="name" 
+                          stroke="#71717A" 
+                          fontSize={9} 
+                          tickLine={false} 
+                          axisLine={false} 
+                          interval={0} 
+                          angle={-20} 
+                          height={50} 
+                          textAnchor="end"
+                        />
+                        <YAxis stroke="#71717A" fontSize={9} tickLine={false} axisLine={false} allowDecimals={false} />
+                        <Tooltip 
+                          cursor={{ fill: 'rgba(197, 160, 89, 0.05)' }} 
+                          contentStyle={{ background: '#18181B', border: '1px solid #C5A059', borderRadius: 8, color: '#FFFFFF', fontSize: 11 }} 
+                        />
+                        <Bar dataKey="value" fill="#C5A059" radius={[4, 4, 0, 0]} />
+                      </BarChart>
+                    </ResponsiveContainer>
+                  </div>
+
+                  {/* Competitors by Dojo */}
+                  <div className="border border-zinc-800 bg-zinc-950/45 p-5 rounded-xl">
+                    <h4 className="text-sm font-bold mb-3 text-zinc-200">Competitors by Dojo</h4>
+                    <ResponsiveContainer width="100%" height={240}>
+                      <BarChart data={dojoDist} layout="vertical" margin={{ left: 5, right: 15 }}>
+                        <XAxis type="number" stroke="#71717A" fontSize={9} tickLine={false} axisLine={false} allowDecimals={false} />
+                        <YAxis type="category" dataKey="name" stroke="#71717A" fontSize={9} width={90} tickLine={false} axisLine={false} />
+                        <Tooltip 
+                          cursor={{ fill: 'rgba(197, 160, 89, 0.05)' }} 
+                          contentStyle={{ background: '#18181B', border: '1px solid #C5A059', borderRadius: 8, color: '#FFFFFF', fontSize: 11 }} 
+                        />
+                        <Bar dataKey="value" fill="#9C7A3C" radius={[0, 4, 4, 0]} />
+                      </BarChart>
+                    </ResponsiveContainer>
+                  </div>
+                </div>
+
+                {/* Bottom Distributions */}
+                <div className="grid md:grid-cols-3 gap-6">
+                  {/* Belt Distribution */}
+                  <div className="border border-zinc-800 bg-zinc-950/45 p-5 rounded-xl">
+                    <h4 className="text-sm font-bold mb-3 text-center text-zinc-200">Belt Distribution</h4>
+                    <ResponsiveContainer width="100%" height={200}>
+                      <PieChart>
+                        <Pie data={beltDist} dataKey="value" nameKey="name" cx="50%" cy="50%" outerRadius={65} innerRadius={40}>
+                          {beltDist.map((_, i) => <Cell key={i} fill={CHART_COLORS[i % CHART_COLORS.length]} />)}
+                        </Pie>
+                        <Tooltip contentStyle={{ background: '#18181B', border: '1px solid #C5A059', borderRadius: 8, color: '#FFFFFF', fontSize: 10 }} />
+                        <Legend wrapperStyle={{ fontSize: 9 }} />
+                      </PieChart>
+                    </ResponsiveContainer>
+                  </div>
+
+                  {/* Gender Distribution */}
+                  <div className="border border-zinc-800 bg-zinc-950/45 p-5 rounded-xl">
+                    <h4 className="text-sm font-bold mb-3 text-center text-zinc-200">Gender Distribution</h4>
+                    <ResponsiveContainer width="100%" height={200}>
+                      <PieChart>
+                        <Pie data={genderDist} dataKey="value" nameKey="name" cx="50%" cy="50%" outerRadius={65} innerRadius={40}>
+                          {genderDist.map((_, i) => <Cell key={i} fill={CHART_COLORS[i % CHART_COLORS.length]} />)}
+                        </Pie>
+                        <Tooltip contentStyle={{ background: '#18181B', border: '1px solid #C5A059', borderRadius: 8, color: '#FFFFFF', fontSize: 10 }} />
+                        <Legend wrapperStyle={{ fontSize: 9 }} />
+                      </PieChart>
+                    </ResponsiveContainer>
+                  </div>
+
+                  {/* Event Mode Preferences */}
+                  <div className="border border-zinc-800 bg-zinc-950/45 p-5 rounded-xl">
+                    <h4 className="text-sm font-bold mb-3 text-center text-zinc-200">Event Mode Preferences</h4>
+                    <ResponsiveContainer width="100%" height={200}>
+                      <PieChart>
+                        <Pie data={eventDist} dataKey="value" nameKey="name" cx="50%" cy="50%" outerRadius={65} innerRadius={40}>
+                          {eventDist.map((_, i) => <Cell key={i} fill={CHART_COLORS[i % CHART_COLORS.length]} />)}
+                        </Pie>
+                        <Tooltip contentStyle={{ background: '#18181B', border: '1px solid #C5A059', borderRadius: 8, color: '#FFFFFF', fontSize: 10 }} />
+                        <Legend wrapperStyle={{ fontSize: 9 }} />
+                      </PieChart>
+                    </ResponsiveContainer>
+                  </div>
+                </div>
+              </div>
+            )}
+          </CardContent>
+        </Card>
+      )}
 
       {/* Branding */}
       <Card className="border-border/60 mb-6">

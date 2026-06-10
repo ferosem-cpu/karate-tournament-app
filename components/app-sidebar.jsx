@@ -168,6 +168,27 @@ export default function AppSidebar({ className, onNavigate }) {
           </>
         )}
 
+        {role === 'spectator' && (
+          <>
+            <div className="my-3 px-2 py-2 text-xs uppercase font-bold text-sidebar-foreground/50 tracking-wider border-l-3 border-gold-primary/30 pl-3">
+              Dojo Creator
+            </div>
+            <Link
+              href="/dashboard/onboarding"
+              onClick={handleNavClick}
+              className={cn(
+                'group flex items-center gap-3 rounded-md px-3 py-2.5 text-sm font-semibold transition-all',
+                pathname === '/dashboard/onboarding'
+                  ? 'bg-gold-primary/10 text-sidebar-accent-foreground border-l-3 border-gold-primary'
+                  : 'text-sidebar-foreground/70 hover:text-sidebar-foreground hover:bg-sidebar-accent/80'
+              )}
+            >
+              <Sparkles className={cn('h-5 w-5', pathname === '/dashboard/onboarding' ? 'text-gold-primary' : '')} />
+              <span>Register as Sensei</span>
+            </Link>
+          </>
+        )}
+
         {isAdminOrOrganizer(role) && (
           <>
             <div className="my-3 px-2 py-2 text-xs uppercase font-bold text-sidebar-foreground/50 tracking-wider border-l-3 border-gold-primary/30 pl-3">

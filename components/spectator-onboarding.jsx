@@ -33,11 +33,11 @@ import {
 } from 'lucide-react';
 import { BELTS, GENDERS, EVENT_TYPES } from '@/lib/constants';
 
-export default function SpectatorOnboarding({ onComplete }) {
+export default function SpectatorOnboarding({ onComplete, initialStep = 'selection' }) {
   const { user, profile } = useAuth();
   
   // Selection or specific wizards
-  const [step, setStep] = useState('selection'); // 'selection' | 'spectator_register' | 'sensei_dojo' | ...
+  const [step, setStep] = useState(initialStep); // 'selection' | 'spectator_register' | 'sensei_dojo' | ...
   const [busy, setBusy] = useState(false);
   const [progress, setProgress] = useState(0);
 
@@ -211,7 +211,7 @@ export default function SpectatorOnboarding({ onComplete }) {
     if (!dojoForm.phone.trim()) return toast.error('Phone number is required');
     if (!dojoForm.whatsapp.trim()) return toast.error('WhatsApp number is required');
     if (!dojoForm.address.trim()) return toast.error('Dojo Address is required');
-    if (localKohais.length === 0) return toast.error('Minimum 1 registered Kohai is mandatory to create a Dojo');
+    if (localKohais.length < 2) return toast.error('Minimum two  Kohais should be registered');
 
     setBusy(true);
     try {
@@ -631,7 +631,7 @@ export default function SpectatorOnboarding({ onComplete }) {
 
           <div className="mb-4">
             <h2 className="text-xl font-black text-white">Add Athlete (Kohai)</h2>
-            <p className="text-xs text-zinc-400 mt-1">Register athletes to your Dojo. Minimum 1 athlete is mandatory.</p>
+            <p className="text-xs text-zinc-400 mt-1">Register athletes to your Dojo. Minimum 2 athletes are mandatory.</p>
           </div>
 
           <form onSubmit={addLocalKohai} className="space-y-4">
@@ -715,9 +715,11 @@ export default function SpectatorOnboarding({ onComplete }) {
               </Badge>
             </div>
 
-            {localKohais.length === 0 ? (
+            {localKohais.length < 2 ? (
               <div className="p-10 border border-dashed border-zinc-900 rounded-lg text-center text-zinc-500 text-xs">
-                No students registered yet. Add at least 1 student on the left form to proceed.
+                {localKohais.length === 0 
+                  ? "No students registered yet. Add at least 2 students on the left form to proceed." 
+                  : `Only ${localKohais.length} student registered. Add at least 2 students on the left form to proceed.`}
               </div>
             ) : (
               <div className="space-y-2 max-h-80 overflow-y-auto pr-1">
@@ -751,7 +753,7 @@ export default function SpectatorOnboarding({ onComplete }) {
             </Button>
             <Button 
               className="bg-gold-primary hover:bg-gold-primary/90 text-zinc-950 font-bold"
-              disabled={busy || localKohais.length === 0}
+              disabled={busy || localKohais.length < 2}
               onClick={submitSensei}
             >
               {busy ? <Loader2 className="h-4 w-4 animate-spin" /> : 'Finalize & Create Dojo'}
