@@ -24,9 +24,15 @@ export default function RefereeConsole() {
   const [match, setMatch] = useState(null);
   const [loading, setLoading] = useState(true);
   const [isMatchReferee, setIsMatchReferee] = useState(false);
+  const [isTournamentOwner, setIsTournamentOwner] = useState(false);
+  const [isAssignedReferee, setIsAssignedReferee] = useState(false);
 
   const canScore =
-    profile?.role === 'referee' || profile?.role === 'super_admin' || (profile?.role === 'dojo_admin' && isMatchReferee);
+    profile?.role === 'referee' ||
+    profile?.role === 'super_admin' ||
+    isMatchReferee ||
+    isTournamentOwner ||
+    isAssignedReferee;
 
   useEffect(() => {
     if (!matchId) return;
@@ -37,23 +43,44 @@ export default function RefereeConsole() {
 
         if (user?.uid && matchData.tournamentId) {
           try {
+            // Check if user is the assigned referee on the tatami
+            if (matchData.tatamiId) {
+              const tatamiSnap = await getDoc(doc(db, 'tatamis', matchData.tatamiId));
+              if (tatamiSnap.exists()) {
+                const tatamiData = tatamiSnap.data();
+                setIsAssignedReferee(tatamiData.assignedRefereeId === user.uid);
+              } else {
+                setIsAssignedReferee(false);
+              }
+            } else {
+              setIsAssignedReferee(false);
+            }
+
             const tSnap = await getDoc(doc(db, 'tournaments', matchData.tournamentId));
             const tournament = tSnap.exists() ? tSnap.data() : null;
-            if (tournament && tournament.status !== 'completed') {
-              const qRefs = query(
-                collection(db, 'referee_applications'),
-                where('tournamentId', '==', matchData.tournamentId),
-                where('userId', '==', user.uid),
-                where('status', '==', 'approved')
-              );
-              const refsSnap = await getDocs(qRefs);
-              setIsMatchReferee(!refsSnap.empty);
+            if (tournament) {
+              setIsTournamentOwner(tournament.ownerId === user.uid);
+              if (tournament.status !== 'completed') {
+                const qRefs = query(
+                  collection(db, 'referee_applications'),
+                  where('tournamentId', '==', matchData.tournamentId),
+                  where('userId', '==', user.uid),
+                  where('status', '==', 'approved')
+                );
+                const refsSnap = await getDocs(qRefs);
+                setIsMatchReferee(!refsSnap.empty);
+              } else {
+                setIsMatchReferee(false);
+              }
             } else {
+              setIsTournamentOwner(false);
               setIsMatchReferee(false);
             }
           } catch (err) {
-            console.error("Error checking referee application:", err);
+            console.error("Error checking referee application/details:", err);
             setIsMatchReferee(false);
+            setIsTournamentOwner(false);
+            setIsAssignedReferee(false);
           }
         }
       } else {

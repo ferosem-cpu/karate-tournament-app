@@ -6,8 +6,8 @@ import { Card, CardContent } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
 import { Badge } from '@/components/ui/badge';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
-import { Trophy, Calculator } from 'lucide-react';
-import { completeKataMatch } from '@/lib/match-engine';
+import { Trophy, Calculator, Play, Lock } from 'lucide-react';
+import { completeKataMatch, startMatchTimer } from '@/lib/match-engine';
 import { toast } from 'sonner';
 import { beltClass } from '@/lib/constants';
 
@@ -22,6 +22,8 @@ export default function KataScoreboard({ match }) {
   }, [match.id]);
 
   const isFinished = match.status === 'completed';
+  const isActive = match.status === 'active';
+  const scoringEnabled = isActive && !isFinished;
 
   const updateScore = (idx, val) => {
     const arr = [...scores];
@@ -53,6 +55,32 @@ export default function KataScoreboard({ match }) {
 
   return (
     <div className="space-y-4">
+      {!isActive && !isFinished && (
+        <Card className="border-border/60 bg-gradient-to-br from-card to-black/60">
+          <CardContent className="p-6 text-center">
+            <div className="text-xs uppercase tracking-widest text-muted-foreground mb-4">Bout Not Started</div>
+            <Button
+              size="lg"
+              onClick={async () => {
+                setBusy(true);
+                try {
+                  await startMatchTimer(match.id);
+                  toast.success('Bout started successfully! Scoring is now enabled.');
+                } catch (e) {
+                  toast.error(e.message);
+                } finally {
+                  setBusy(false);
+                }
+              }}
+              disabled={busy}
+              className="bg-emerald-600 hover:bg-emerald-700 text-white min-w-[200px] h-16 text-xl font-bold"
+            >
+              <Play className="h-6 w-6 mr-2" /> START BOUT
+            </Button>
+          </CardContent>
+        </Card>
+      )}
+
       <Card className="border-border/60 bg-gradient-to-br from-red-900/30 via-card to-amber-900/10">
         <CardContent className="p-6">
           <div className="flex items-center gap-4">
@@ -75,7 +103,7 @@ export default function KataScoreboard({ match }) {
           </div>
           <div className="mt-4">
             <label className="text-xs uppercase tracking-wider text-muted-foreground block mb-1.5">Kata Performed (optional)</label>
-            <Input value={kataName} onChange={(e) => setKataName(e.target.value)} placeholder="e.g. Heian Shodan, Bassai Dai…" disabled={isFinished} />
+            <Input value={kataName} onChange={(e) => setKataName(e.target.value)} placeholder="e.g. Heian Shodan, Bassai Dai…" disabled={isFinished || !scoringEnabled} />
           </div>
         </CardContent>
       </Card>
@@ -94,7 +122,7 @@ export default function KataScoreboard({ match }) {
                   <Input
                     type="number" step="0.1" min="0" max="10"
                     value={s.score} onChange={(e) => updateScore(i, e.target.value)}
-                    disabled={isFinished}
+                    disabled={isFinished || !scoringEnabled}
                     className="h-14 text-center text-2xl font-bold tabular-nums bg-background"
                     placeholder="0.0"
                   />
@@ -110,7 +138,12 @@ export default function KataScoreboard({ match }) {
                 {scores.length >= 3 ? 'Highest & lowest dropped · sum of middle ' + (scores.length - 2) + ' scores' : 'Sum of all scores'}
                 {preview.kept.length > 0 && <span> · Kept: {preview.kept.join(' + ')} = <span className="text-foreground font-semibold">{preview.total}</span></span>}
               </div>
-              <Button onClick={submit} disabled={busy} className="bg-primary hover:bg-primary/90 min-w-[180px] h-11"><Trophy className="h-4 w-4 mr-2" /> Save & Complete</Button>
+              <Button onClick={submit} disabled={busy || !scoringEnabled} className="bg-primary hover:bg-primary/90 min-w-[180px] h-11"><Trophy className="h-4 w-4 mr-2" /> Save & Complete</Button>
+            </div>
+          )}
+          {!scoringEnabled && !isFinished && (
+            <div className="mt-4 inline-flex items-center gap-2 text-xs text-amber-300 w-full justify-center">
+              <Lock className="h-3.5 w-3.5" /> Scoring is locked. Start the bout to enable.
             </div>
           )}
           {isFinished && (

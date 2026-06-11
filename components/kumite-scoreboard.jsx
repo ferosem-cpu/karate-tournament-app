@@ -127,7 +127,7 @@ export default function KumiteScoreboard({ match }) {
               ) : match.timerAccumulatedSeconds > 0 ? (
                 <Button size="lg" onClick={onResume} className="bg-emerald-600 hover:bg-emerald-700 text-white min-w-[200px] h-16 text-xl font-bold"><Play className="h-6 w-6 mr-2" /> RESUME</Button>
               ) : (
-                <Button size="lg" onClick={() => setConfirmStart(true)} className="bg-emerald-600 hover:bg-emerald-700 text-white min-w-[200px] h-16 text-xl font-bold"><Play className="h-6 w-6 mr-2" /> START MATCH</Button>
+                <Button size="lg" onClick={() => setConfirmStart(true)} className="bg-emerald-600 hover:bg-emerald-700 text-white min-w-[200px] h-16 text-xl font-bold"><Play className="h-6 w-6 mr-2" /> START BOUT</Button>
               )
             )}
             {isFinished && match.winner && (

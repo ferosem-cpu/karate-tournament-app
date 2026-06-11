@@ -9,10 +9,11 @@ import { Button } from '@/components/ui/button';
 import { Card, CardContent } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
-import { Activity, Pause, Lock, Clock, ChevronRight, Maximize2, Swords, User, Grid3x3 } from 'lucide-react';
+import { Activity, Pause, Lock, Clock, ChevronRight, Maximize2, Swords, User, Grid3x3, Play } from 'lucide-react';
 import { MATCH_STATUS_META, beltClass } from '@/lib/constants';
-import { callMatchOnTatami } from '@/lib/match-engine';
+import { callMatchOnTatami, startMatchTimer } from '@/lib/match-engine';
 import { toast } from 'sonner';
+import { useAuth } from '@/lib/auth-context';
 
 const TATAMI_STATUS_META = {
   active:  { icon: Activity, cls: 'bg-emerald-500/15 text-emerald-300 border-emerald-500/40', label: 'Active' },
@@ -23,10 +24,14 @@ const TATAMI_STATUS_META = {
 
 export default function TatamiOpsScreen() {
   const { id } = useParams();
+  const { user, profile } = useAuth();
   const [tatami, setTatami] = useState(null);
   const [matches, setMatches] = useState([]);
   const [tournament, setTournament] = useState(null);
   const [time, setTime] = useState(new Date());
+
+  const [isTournamentReferee, setIsTournamentReferee] = useState(false);
+  const [checkingRole, setCheckingRole] = useState(true);
 
   useEffect(() => { const t = setInterval(() => setTime(new Date()), 1000); return () => clearInterval(t); }, []);
 
@@ -45,7 +50,54 @@ export default function TatamiOpsScreen() {
     }
   }, [tatami?.tournamentId]);
 
-  if (!tatami) return <div className="min-h-screen flex items-center justify-center text-muted-foreground">Loading tatami…</div>;
+  useEffect(() => {
+    if (!user || !tatami?.tournamentId) {
+      setCheckingRole(false);
+      return;
+    }
+    const q = query(
+      collection(db, 'referee_applications'),
+      where('tournamentId', '==', tatami.tournamentId),
+      where('userId', '==', user.uid),
+      where('status', '==', 'approved')
+    );
+    const unsub = onSnapshot(q, (s) => {
+      setIsTournamentReferee(!s.empty);
+      setCheckingRole(false);
+    }, (err) => {
+      console.error(err);
+      setCheckingRole(false);
+    });
+    return () => unsub();
+  }, [user, tatami?.tournamentId]);
+
+  const isOwner = tournament?.ownerId === user?.uid;
+  const isSuperAdmin = profile?.role === 'super_admin';
+  const isOrganizer = isOwner;
+  const isRef = profile?.role === 'referee' || isTournamentReferee || tatami?.assignedRefereeId === user?.uid;
+  const hasAccess = isSuperAdmin || isOrganizer || isRef;
+  const checking = !tatami || checkingRole;
+
+  if (checking) return <div className="min-h-screen flex items-center justify-center text-muted-foreground">Loading tatami…</div>;
+
+  if (!hasAccess) {
+    return (
+      <div className="min-h-screen bg-background flex flex-col items-center justify-center p-6 text-center">
+        <Lock className="h-16 w-16 text-destructive mb-4 animate-pulse" />
+        <h1 className="text-2xl font-black tracking-tight text-white mb-2">Access Denied</h1>
+        <p className="text-sm text-muted-foreground max-w-md mb-6">
+          {!user 
+            ? "You must be logged in to access the Tatami operations screen." 
+            : "You do not have permission to access the operations screen for this Tatami. Only the assigned tournament organizer, registered referees for this tournament, or system administrators can access these controls."}
+        </p>
+        <Button asChild className="bg-primary hover:bg-primary/90">
+          <Link href={!user ? "/login" : "/dashboard"}>
+            {!user ? "Log In" : "Return to Dashboard"}
+          </Link>
+        </Button>
+      </div>
+    );
+  }
 
   const meta = TATAMI_STATUS_META[tatami.status] || TATAMI_STATUS_META.active;
   const SIcon = meta.icon;
@@ -69,6 +121,15 @@ export default function TatamiOpsScreen() {
     if (!next) return toast.error('No queued matches');
     try { await callMatchOnTatami(next.id); toast.success(`Match #${next.matchInRound + 1} called to tatami`); }
     catch (e) { toast.error(e.message); }
+  };
+
+  const handleStartBout = async (matchId) => {
+    try {
+      await startMatchTimer(matchId);
+      toast.success('Bout started successfully! Scoring is now enabled.');
+    } catch (e) {
+      toast.error(e.message || 'Failed to start bout');
+    }
   };
 
   return (
@@ -99,7 +160,7 @@ export default function TatamiOpsScreen() {
         <section className="mb-6">
           <SectionTitle title="Current Match" subtitle="Live on this tatami" />
           {active ? (
-            <CurrentMatchCard match={active} />
+            <CurrentMatchCard match={active} onStartBout={handleStartBout} />
           ) : (
             <Card className="border-2 border-dashed border-border/60"><CardContent className="p-12 text-center">
               <Swords className="h-10 w-10 mx-auto text-muted-foreground mb-3" />
@@ -170,7 +231,7 @@ function SectionTitle({ title, subtitle }) {
   );
 }
 
-function CurrentMatchCard({ match }) {
+function CurrentMatchCard({ match, onStartBout }) {
   const meta = MATCH_STATUS_META[match.status] || MATCH_STATUS_META.queued;
   return (
     <Card className="border-2 border-primary/40 bg-gradient-to-br from-card via-card to-red-950/20 overflow-hidden">
@@ -179,7 +240,21 @@ function CurrentMatchCard({ match }) {
           <Badge variant="outline" className={meta.cls}>{meta.label}</Badge>
           <div className="text-xs text-muted-foreground"><span className="font-semibold text-foreground">{match.categoryName}</span> · {match.eventType} · Round {match.round}{match.totalRounds ? `/${match.totalRounds}` : ''}</div>
         </div>
-        <Button asChild className="bg-primary hover:bg-primary/90"><Link href={`/referee/${match.id}`}><User className="h-4 w-4 mr-2" /> Open Referee Console</Link></Button>
+        <div className="flex items-center gap-2">
+          {(match.status === 'on_tatami' || match.status === 'called') && (
+            <Button
+              onClick={() => onStartBout(match.id)}
+              className="bg-emerald-600 hover:bg-emerald-700 text-white font-bold"
+            >
+              <Play className="h-4 w-4 mr-2" /> Start Bout
+            </Button>
+          )}
+          <Button asChild className="bg-primary hover:bg-primary/90">
+            <Link href={`/referee/${match.id}`}>
+              <User className="h-4 w-4 mr-2" /> Open Referee Console
+            </Link>
+          </Button>
+        </div>
       </div>
       <CardContent className="p-6">
         {match.eventType === 'Kumite' ? (

@@ -17,6 +17,45 @@ import { toast } from 'sonner';
 import { BELTS, GENDERS } from '@/lib/constants';
 import AccessDenied from '@/components/access-denied';
 
+function formatExcelDate(val) {
+  if (val === undefined || val === null || val === '') return '';
+
+  // 1. If it's already a JS Date object
+  if (val instanceof Date) {
+    const y = val.getFullYear();
+    const m = String(val.getMonth() + 1).padStart(2, '0');
+    const d = String(val.getDate()).padStart(2, '0');
+    return `${y}-${m}-${d}`;
+  }
+
+  // 2. If it's a number or numeric string (Excel serial date)
+  if (typeof val === 'number' || (typeof val === 'string' && val.trim() !== '' && !isNaN(Number(val)))) {
+    const serial = Number(val);
+    const dateInfo = new Date((serial - 25569) * 86400 * 1000);
+    const y = dateInfo.getUTCFullYear();
+    const m = String(dateInfo.getUTCMonth() + 1).padStart(2, '0');
+    const d = String(dateInfo.getUTCDate()).padStart(2, '0');
+    return `${y}-${m}-${d}`;
+  }
+
+  // 3. If it's a string, check if it's already YYYY-MM-DD
+  const str = String(val).trim();
+  if (/^\d{4}-\d{2}-\d{2}$/.test(str)) {
+    return str;
+  }
+
+  // 4. Try parsing it as a date
+  const parsed = new Date(str);
+  if (!isNaN(parsed.getTime())) {
+    const y = parsed.getFullYear();
+    const m = String(parsed.getMonth() + 1).padStart(2, '0');
+    const d = String(parsed.getDate()).padStart(2, '0');
+    return `${y}-${m}-${d}`;
+  }
+
+  return str;
+}
+
 const TEMPLATE_HEADERS = ['fullName', 'gender', 'dateOfBirth', 'belt', 'weight', 'dojo', 'eventType', 'emergencyContactName', 'emergencyContactPhone', 'emergencyContactRelation', 'emergencyContactEmail'];
 const TEMPLATE_SAMPLE = [
   { fullName: 'Hiro Tanaka', gender: 'Male', dateOfBirth: '2005-04-12', belt: 'Brown', weight: 68, dojo: 'Tanaka Karate Dojo', eventType: 'Kumite', emergencyContactName: 'Akira Tanaka', emergencyContactPhone: '+91 9876543210', emergencyContactRelation: 'Father', emergencyContactEmail: 'parent@example.com' },
@@ -134,10 +173,12 @@ export default function BulkUploadPage() {
       const isDojoAdmin = profile?.role === 'dojo_admin';
 
       const enriched = data.map((r, i) => {
-        const v = validateRow(r);
+        const dob = formatExcelDate(r.dateOfBirth);
+        const normalizedRow = { ...r, dateOfBirth: dob };
+        const v = validateRow(normalizedRow);
         const dojoMatch = isDojoAdmin ? myDojo : dojos.find((d) => (d.name || '').toLowerCase() === (r.dojo || '').toString().toLowerCase());
         return {
-          ...r,
+          ...normalizedRow,
           dojo: isDojoAdmin ? (myDojo?.name || '') : r.dojo,
           _idx: i,
           _errors: v.errors,
