@@ -9,7 +9,7 @@ import { Button } from '@/components/ui/button';
 import { Card, CardContent } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
-import { Activity, Pause, Lock, Clock, ChevronRight, Maximize2, Swords, User, Grid3x3, Play } from 'lucide-react';
+import { Activity, Pause, Lock, Clock, ChevronRight, Maximize2, Swords, User, Grid3x3, Play, Trophy } from 'lucide-react';
 import { MATCH_STATUS_META, beltClass } from '@/lib/constants';
 import { callMatchOnTatami, startMatchTimer } from '@/lib/match-engine';
 import { toast } from 'sonner';
@@ -113,6 +113,28 @@ export default function TatamiOpsScreen() {
   const upcoming = queued.slice(3, 10);
   const recent = matches.filter((m) => m.status === 'completed' || m.status === 'verified').sort((a, b) => (b.completedAt?.toMillis?.() || 0) - (a.completedAt?.toMillis?.() || 0)).slice(0, 5);
 
+  // Group matches by category
+  const categoriesMap = {};
+  matches.forEach((m) => {
+    if (!m.categoryId) return;
+    if (!categoriesMap[m.categoryId]) {
+      categoriesMap[m.categoryId] = {
+        id: m.categoryId,
+        name: m.categoryName || 'Unnamed Category',
+        eventType: m.eventType || 'Kumite',
+        matches: [],
+      };
+    }
+    categoriesMap[m.categoryId].matches.push(m);
+  });
+
+  // Find completed categories
+  const completedCategories = Object.values(categoriesMap).filter((cat) => {
+    if (cat.matches.length === 0) return false;
+    // Check if ALL matches in the category are completed or verified
+    return cat.matches.every((m) => m.status === 'completed' || m.status === 'verified');
+  });
+
   const goFullscreen = () => { if (document.fullscreenElement) document.exitFullscreen(); else document.documentElement.requestFullscreen?.(); };
 
   const callNext = async () => {
@@ -181,6 +203,70 @@ export default function TatamiOpsScreen() {
           </section>
         )}
 
+        {/* Completed Categories (Sets) */}
+        {completedCategories.length > 0 && (
+          <section className="mb-6">
+            <SectionTitle title="Completed Sets & Standings" subtitle="Final placements for categories finished on this tatami" />
+            <div className="grid sm:grid-cols-1 md:grid-cols-2 gap-6">
+              {completedCategories.map((cat) => {
+                const placements = computePlacements(cat.matches, cat.eventType);
+                return (
+                  <Card key={cat.id} className="border-2 border-primary/20 bg-gradient-to-br from-card via-card to-black/40 overflow-hidden shadow-xl">
+                    <CardContent className="p-5">
+                      <div className="flex items-center justify-between mb-4 border-b border-border/60 pb-2">
+                        <h3 className="font-bold text-sm truncate">{cat.name}</h3>
+                        <Badge variant="outline" className="bg-primary/15 text-primary border-primary/40 uppercase font-black text-[9px] px-2 py-0.5">
+                          {cat.eventType}
+                        </Badge>
+                      </div>
+                      <div className="space-y-3">
+                        {placements.winner && (
+                          <div className="flex items-center gap-3">
+                            <div className="h-8 w-8 rounded-full bg-amber-500/10 flex items-center justify-center border border-amber-500/30">
+                              <Trophy className="h-4 w-4 text-amber-400" />
+                            </div>
+                            <div className="text-xs">
+                              <div className="font-semibold text-foreground">{placements.winner.name} <span className="text-[10px] text-muted-foreground font-normal">({placements.winner.dojoName || '—'})</span></div>
+                              <div className="text-[9px] uppercase tracking-wider text-amber-400 font-bold">1st Place (Winner)</div>
+                            </div>
+                          </div>
+                        )}
+                        {placements.runnerUp && (
+                          <div className="flex items-center gap-3">
+                            <div className="h-8 w-8 rounded-full bg-zinc-300/10 flex items-center justify-center border border-zinc-300/30">
+                              <Trophy className="h-4 w-4 text-zinc-300" />
+                            </div>
+                            <div className="text-xs">
+                              <div className="font-semibold text-foreground">{placements.runnerUp.name} <span className="text-[10px] text-muted-foreground font-normal">({placements.runnerUp.dojoName || '—'})</span></div>
+                              <div className="text-[9px] uppercase tracking-wider text-zinc-400 font-bold">2nd Place (Runner)</div>
+                            </div>
+                          </div>
+                        )}
+                        {placements.secondRunnersUp.length > 0 && (
+                          <div className="space-y-3">
+                            {placements.secondRunnersUp.map((ath, idx) => (
+                              <div key={idx} className="flex items-center gap-3">
+                                <div className="h-8 w-8 rounded-full bg-orange-700/10 flex items-center justify-center border border-orange-700/30">
+                                  <Trophy className="h-4 w-4 text-orange-500" />
+                                </div>
+                                <div className="text-xs">
+                                  <div className="font-semibold text-foreground">{ath.name} <span className="text-[10px] text-muted-foreground font-normal">({ath.dojoName || '—'})</span></div>
+                                  <div className="text-[9px] uppercase tracking-wider text-orange-400 font-bold">3rd Place (Second Runner)</div>
+                                </div>
+                              </div>
+                            ))}
+                          </div>
+                        )}
+                      </div>
+                      <CollapsibleBracket matchesForCategory={cat.matches} isKumite={cat.eventType === 'Kumite'} />
+                    </CardContent>
+                  </Card>
+                );
+              })}
+            </div>
+          </section>
+        )}
+
         <div className="grid lg:grid-cols-2 gap-6">
           {upcoming.length > 0 && (
             <section>
@@ -190,7 +276,7 @@ export default function TatamiOpsScreen() {
                   <div key={m.id} className="flex items-center gap-3 p-3">
                     <Badge variant="outline" className="text-[10px] w-10 justify-center">#{i + 4}</Badge>
                     <div className="flex-1 min-w-0 text-sm"><span className="font-medium">{m.aka?.name || 'TBD'}</span> <span className="text-muted-foreground">vs</span> <span className="font-medium">{m.ao?.name || 'TBD'}</span></div>
-                    <div className="text-[10px] text-muted-foreground">{m.categoryName}</div>
+                    <div className="text-[10px] text-muted-foreground">{m.categoryName} · <strong className="text-foreground font-bold uppercase">{m.eventType}</strong></div>
                   </div>
                 ))}
               </CardContent></Card>
@@ -208,7 +294,7 @@ export default function TatamiOpsScreen() {
                       <span className="text-muted-foreground mx-2">vs</span>
                       <span className={m.winner?.side === 'ao' ? 'font-bold text-foreground' : 'text-muted-foreground'}>{m.ao?.name || (m.eventType === 'Kata' ? `— ${m.kataFinalScore?.toFixed?.(2) || ''}` : 'TBD')}</span>
                     </div>
-                    <div className="text-[10px] text-muted-foreground">{m.categoryName}</div>
+                    <div className="text-[10px] text-muted-foreground">{m.categoryName} · <strong className="text-foreground font-bold uppercase">{m.eventType}</strong></div>
                   </div>
                 ))}
               </CardContent></Card>
@@ -238,7 +324,7 @@ function CurrentMatchCard({ match, onStartBout }) {
       <div className="px-6 py-3 border-b border-border/60 flex items-center justify-between flex-wrap gap-2">
         <div className="flex items-center gap-3">
           <Badge variant="outline" className={meta.cls}>{meta.label}</Badge>
-          <div className="text-xs text-muted-foreground"><span className="font-semibold text-foreground">{match.categoryName}</span> · {match.eventType} · Round {match.round}{match.totalRounds ? `/${match.totalRounds}` : ''}</div>
+          <div className="text-xs text-muted-foreground"><span className="font-semibold text-foreground">{match.categoryName}</span> · <strong className="text-foreground font-extrabold uppercase">{match.eventType}</strong> · Round {match.round}{match.totalRounds ? `/${match.totalRounds}` : ''}</div>
         </div>
         <div className="flex items-center gap-2">
           {(match.status === 'on_tatami' || match.status === 'called') && (
@@ -302,7 +388,7 @@ function UpcomingMatchCard({ match, index }) {
       <CardContent className="p-4">
         <div className="flex items-center justify-between mb-2">
           <Badge variant="outline" className="text-[10px]">#{index}</Badge>
-          <div className="text-[10px] text-muted-foreground">{match.categoryName}</div>
+          <div className="text-[10px] text-muted-foreground">{match.categoryName} · <strong className="text-foreground font-bold uppercase">{match.eventType}</strong></div>
         </div>
         {match.eventType === 'Kumite' ? (
           <div className="text-sm">
@@ -316,3 +402,136 @@ function UpcomingMatchCard({ match, index }) {
     </Card>
   );
 }
+
+function computePlacements(catMatches, eventType) {
+  if (eventType === 'Kata') {
+    const ranked = [...catMatches]
+      .filter((m) => m.kataFinalScore != null)
+      .sort((a, b) => (b.kataFinalScore || 0) - (a.kataFinalScore || 0));
+    return {
+      winner: ranked[0]?.aka || null,
+      runnerUp: ranked[1]?.aka || null,
+      secondRunnersUp: ranked[2] ? [ranked[2].aka] : [],
+    };
+  } else {
+    // Kumite
+    const totalRounds = Math.max(...catMatches.map((m) => m.round || 1));
+    const finalMatch = catMatches.find((m) => m.round === totalRounds);
+    const semiMatches = catMatches.filter((m) => m.round === totalRounds - 1);
+    const winnerSide = finalMatch?.winner?.side;
+    const winner = winnerSide ? finalMatch[winnerSide] : null;
+    const runnerUp = winnerSide ? (winnerSide === 'aka' ? finalMatch.ao : finalMatch.aka) : null;
+    const secondRunnersUp = semiMatches
+      .map((m) => {
+        if (!m.winner) return null;
+        return m.winner.side === 'aka' ? m.ao : m.aka;
+      })
+      .filter(Boolean);
+    return { winner, runnerUp, secondRunnersUp };
+  }
+}
+
+function CollapsibleBracket({ matchesForCategory, isKumite }) {
+  const [expanded, setExpanded] = useState(false);
+
+  if (matchesForCategory.length === 0) return null;
+
+  if (!isKumite) {
+    const kataRanked = [...matchesForCategory].sort((a, b) => (b.kataFinalScore || -1) - (a.kataFinalScore || -1));
+    return (
+      <div className="mt-4 border-t border-border/40 pt-4">
+        <Button
+          variant="ghost"
+          size="sm"
+          onClick={() => setExpanded(!expanded)}
+          className="w-full flex items-center justify-between text-xs text-muted-foreground hover:text-foreground"
+        >
+          <span>{expanded ? 'Hide Scores & Standings' : 'Show Scores & Standings'}</span>
+          <ChevronRight className={`h-4 w-4 transform transition-transform ${expanded ? 'rotate-90' : ''}`} />
+        </Button>
+
+        {expanded && (
+          <div className="mt-3 space-y-1.5 max-w-md">
+            {kataRanked.map((m, i) => (
+              <div key={m.id} className="flex items-center justify-between p-2 rounded border border-border/60 bg-zinc-950/20 text-xs">
+                <div className="flex items-center gap-2">
+                  <span className="font-bold text-muted-foreground w-4">{i + 1}.</span>
+                  <span className="font-medium">{m.aka?.name}</span>
+                  <span className="text-[10px] text-muted-foreground truncate max-w-[120px]">({m.aka?.dojoName})</span>
+                </div>
+                <span className="font-bold text-gold tabular-nums">{m.kataFinalScore?.toFixed(2) || '—'}</span>
+              </div>
+            ))}
+          </div>
+        )}
+      </div>
+    );
+  }
+
+  const totalRounds = Math.max(...matchesForCategory.map((m) => m.totalRounds || 1), 1);
+  const roundsArr = [];
+  for (let r = 1; r <= totalRounds; r++) {
+    roundsArr.push(
+      matchesForCategory
+        .filter((m) => m.round === r)
+        .sort((a, b) => a.matchInRound - b.matchInRound)
+    );
+  }
+
+  return (
+    <div className="mt-4 border-t border-border/40 pt-4">
+      <Button
+        variant="ghost"
+        size="sm"
+        onClick={() => setExpanded(!expanded)}
+        className="w-full flex items-center justify-between text-xs text-muted-foreground hover:text-foreground"
+      >
+        <span>{expanded ? 'Hide Pictorial Bracket' : 'Show Pictorial Bracket'}</span>
+        <ChevronRight className={`h-4 w-4 transform transition-transform ${expanded ? 'rotate-90' : ''}`} />
+      </Button>
+
+      {expanded && (
+        <div className="mt-4 overflow-x-auto pb-4">
+          <div className="flex gap-4 min-w-fit justify-start">
+            {roundsArr.map((roundMatches, rIdx) => (
+              <div key={rIdx} className="flex-shrink-0 w-[240px]">
+                <div className="text-[10px] uppercase tracking-widest text-muted-foreground mb-2 text-center font-semibold">
+                  {rIdx === totalRounds - 1 ? 'Final' : rIdx === totalRounds - 2 ? 'Semifinal' : `Round ${rIdx + 1}`}
+                </div>
+                <div className="space-y-2">
+                  {roundMatches.map((m) => {
+                    const isCompleted = m.status === 'completed' || m.status === 'verified';
+                    const aw = m.winner?.side === 'aka';
+                    const bw = m.winner?.side === 'ao';
+                    return (
+                      <Card key={m.id} className="border-border/60 bg-zinc-950/40 text-xs overflow-hidden">
+                        <div className="px-2 py-1 bg-zinc-900/50 flex items-center justify-between border-b border-border/40">
+                          <span className="text-[9px] font-bold text-muted-foreground">M{m.matchInRound + 1}</span>
+                          {isCompleted ? (
+                            <Badge variant="outline" className="text-[8px] px-1 py-0 border-emerald-500/20 text-emerald-400 bg-emerald-500/5">DONE</Badge>
+                          ) : (
+                            <Badge variant="outline" className="text-[8px] px-1 py-0 border-amber-500/20 text-amber-400 bg-amber-500/5">READY</Badge>
+                          )}
+                        </div>
+                        <div className={`flex items-center justify-between px-2 py-1.5 ${aw ? 'bg-emerald-500/5 font-semibold text-white' : 'text-zinc-400'}`}>
+                          <span className="truncate max-w-[170px]">{m.aka?.name || (m.isBye ? 'BYE' : 'TBD')}</span>
+                          <span className="tabular-nums font-bold">{m.akaScore ?? 0}</span>
+                        </div>
+                        <div className="border-t border-border/40" />
+                        <div className={`flex items-center justify-between px-2 py-1.5 ${bw ? 'bg-emerald-500/5 font-semibold text-white' : 'text-zinc-400'}`}>
+                          <span className="truncate max-w-[170px]">{m.ao?.name || (m.isBye ? 'BYE' : 'TBD')}</span>
+                          <span className="tabular-nums font-bold">{m.aoScore ?? 0}</span>
+                        </div>
+                      </Card>
+                    );
+                  })}
+                </div>
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
+    </div>
+  );
+}
+
