@@ -39,9 +39,15 @@ export default function DashboardPage() {
       setTournaments(visibleTournaments);
     });
 
-    const unsubD = onSnapshot(collection(db, 'dojos'), (s) => setCounts((c) => ({ ...c, dojos: s.size })));
-    const unsubA = onSnapshot(collection(db, 'athletes'), (s) => setCounts((c) => ({ ...c, athletes: s.size })));
-    const unsubT = onSnapshot(collection(db, 'tatamis'), (s) => setCounts((c) => ({ ...c, tatamis: s.size })));
+    let unsubD = () => {};
+    let unsubA = () => {};
+    let unsubT = () => {};
+
+    if (profile?.role && profile.role !== 'spectator') {
+      unsubD = onSnapshot(collection(db, 'dojos'), (s) => setCounts((c) => ({ ...c, dojos: s.size })));
+      unsubA = onSnapshot(collection(db, 'athletes'), (s) => setCounts((c) => ({ ...c, athletes: s.size })));
+      unsubT = onSnapshot(collection(db, 'tatamis'), (s) => setCounts((c) => ({ ...c, tatamis: s.size })));
+    }
 
     return () => {
       unsub();
