@@ -16,15 +16,12 @@ export default function Step3Categories({ wizardData, onNext }) {
     name: '', eventType: 'Kata', 
     minAge: '', maxAge: '', 
     minWeight: '', maxWeight: '',
-    byAge: true, byWeight: true
+    byAge: true, byWeight: false
   });
   const [busy, setBusy] = useState(false);
 
   const addCategory = () => {
     if (!newCategory.name.trim()) return alert('Event Category name required');
-    if (!newCategory.byAge && !newCategory.byWeight) {
-      return alert('Please check at least "Create event by age" or "Create event by weight"');
-    }
     const catToAdd = {
       ...newCategory,
       minAge: newCategory.byAge ? newCategory.minAge : '',
@@ -38,7 +35,7 @@ export default function Step3Categories({ wizardData, onNext }) {
       name: '', eventType: 'Kata', 
       minAge: '', maxAge: '', 
       minWeight: '', maxWeight: '',
-      byAge: true, byWeight: true
+      byAge: true, byWeight: false
     });
   };
 
@@ -47,53 +44,91 @@ export default function Step3Categories({ wizardData, onNext }) {
   };
 
   const autoCreateCategories = () => {
-    const selectedAgeDivs = STANDARD_AGE_DIVISIONS.slice(0, 6);
-    const selectedWeightDivs = STANDARD_WEIGHT_DIVISIONS.slice(0, 5);
+    const selectedAgeDivs = STANDARD_AGE_DIVISIONS;
+    const selectedWeightDivs = STANDARD_WEIGHT_DIVISIONS;
     const genders = ['Male', 'Female'];
     const events = ['Kata', 'Kumite'];
     const newCats = [];
     let count = 0;
 
+    // 1. Age-wise
     for (const g of genders) {
       for (const ev of events) {
-        const isKumite = ev.toLowerCase().includes('kumite');
-        if (isKumite) {
-          for (const ageDiv of selectedAgeDivs) {
-            for (const weightDiv of selectedWeightDivs) {
-              const nameParts = [ageDiv.label, g, ev, weightDiv.label];
-              newCats.push({
-                id: Date.now() + count++,
-                name: nameParts.join(' '),
-                eventType: ev,
-                gender: g,
-                minAge: ageDiv.min,
-                maxAge: ageDiv.max,
-                minWeight: weightDiv.min,
-                maxWeight: weightDiv.max,
-                byAge: true,
-                byWeight: true
-              });
-            }
-          }
-        } else {
-          for (const ageDiv of selectedAgeDivs) {
-            const nameParts = [ageDiv.label, g, ev];
-            newCats.push({
-              id: Date.now() + count++,
-              name: nameParts.join(' '),
-              eventType: ev,
-              gender: g,
-              minAge: ageDiv.min,
-              maxAge: ageDiv.max,
-              minWeight: '',
-              maxWeight: '',
-              byAge: true,
-              byWeight: false
-            });
-          }
+        for (const ageDiv of selectedAgeDivs) {
+          const nameParts = [ageDiv.label, g, ev];
+          newCats.push({
+            id: Date.now() + count++,
+            name: nameParts.join(' '),
+            eventType: ev,
+            gender: g,
+            minAge: ageDiv.min,
+            maxAge: ageDiv.max,
+            minWeight: '',
+            maxWeight: '',
+            byAge: true,
+            byWeight: false
+          });
         }
       }
     }
+
+    // 2. Weight-wise (Kumite only)
+    for (const g of genders) {
+      for (const ev of events) {
+        if (!ev.toLowerCase().includes('kumite')) continue;
+
+        for (const weightDiv of selectedWeightDivs) {
+          const nameParts = [g, ev, weightDiv.label];
+          newCats.push({
+            id: Date.now() + count++,
+            name: nameParts.join(' '),
+            eventType: ev,
+            gender: g,
+            minAge: '',
+            maxAge: '',
+            minWeight: weightDiv.min,
+            maxWeight: weightDiv.max,
+            byAge: false,
+            byWeight: true
+          });
+        }
+      }
+    }
+
+    // 3. Open Category (Mixed)
+    for (const ev of events) {
+      newCats.push({
+        id: Date.now() + count++,
+        name: `Open Mixed ${ev}`,
+        eventType: ev,
+        gender: 'Mixed',
+        minAge: '',
+        maxAge: '',
+        minWeight: '',
+        maxWeight: '',
+        byAge: false,
+        byWeight: false
+      });
+    }
+
+    // 4. Black Belt Category (Mixed)
+    for (const ev of events) {
+      newCats.push({
+        id: Date.now() + count++,
+        name: `Black Belt Mixed ${ev}`,
+        eventType: ev,
+        gender: 'Mixed',
+        minAge: '',
+        maxAge: '',
+        minWeight: '',
+        maxWeight: '',
+        beltMin: 'Black',
+        beltMax: 'Black',
+        byAge: false,
+        byWeight: false
+      });
+    }
+
     setCategories([...categories, ...newCats]);
   };
 
@@ -146,7 +181,11 @@ export default function Step3Categories({ wizardData, onNext }) {
               <input 
                 type="checkbox" 
                 checked={newCategory.byAge} 
-                onChange={(e) => setNewCategory({ ...newCategory, byAge: e.target.checked })} 
+                onChange={(e) => setNewCategory({ 
+                  ...newCategory, 
+                  byAge: e.target.checked,
+                  byWeight: e.target.checked ? false : newCategory.byWeight
+                })} 
                 className="h-4 w-4 rounded border-gray-300 text-primary focus:ring-primary bg-secondary"
               />
               <span>Create event by age</span>
@@ -155,7 +194,11 @@ export default function Step3Categories({ wizardData, onNext }) {
               <input 
                 type="checkbox" 
                 checked={newCategory.byWeight} 
-                onChange={(e) => setNewCategory({ ...newCategory, byWeight: e.target.checked })} 
+                onChange={(e) => setNewCategory({ 
+                  ...newCategory, 
+                  byWeight: e.target.checked,
+                  byAge: e.target.checked ? false : newCategory.byAge
+                })} 
                 className="h-4 w-4 rounded border-gray-300 text-primary focus:ring-primary bg-secondary"
               />
               <span>Create event by weight</span>

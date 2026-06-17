@@ -23,7 +23,7 @@ export default function CategoryFormDialog({ open, onOpenChange, tournaments, in
     name: '', tournamentId: '', tournamentName: '', eventType: 'Kumite',
     gender: 'Mixed', ageMin: '', ageMax: '', beltMin: '', beltMax: '',
     weightMin: '', weightMax: '', description: '', isActive: true,
-    byAge: true, byWeight: true,
+    byAge: true, byWeight: false,
   });
 
   useEffect(() => {
@@ -51,7 +51,7 @@ export default function CategoryFormDialog({ open, onOpenChange, tournaments, in
       eventType: 'Kumite',
       gender: 'Mixed', ageMin: '', ageMax: '', beltMin: '', beltMax: '',
       weightMin: '', weightMax: '', description: '', isActive: true,
-      byAge: true, byWeight: true,
+      byAge: true, byWeight: false,
     });
   }, [initial, open, lockedTournamentId, tournaments]);
 
@@ -67,9 +67,7 @@ export default function CategoryFormDialog({ open, onOpenChange, tournaments, in
       return toast.error('View-only: you cannot create or edit event categories');
     }
     if (!form.name.trim()) return toast.error('Event Category name is required');
-    if (!form.byAge && !form.byWeight) {
-      return toast.error('Please check at least "Create event by age" or "Create event by weight".');
-    }
+
     if (!form.tournamentId) {
       return toast.error('Tournament is required');
     }
@@ -149,11 +147,21 @@ export default function CategoryFormDialog({ open, onOpenChange, tournaments, in
 
             <div className="sm:col-span-2 border-y border-zinc-800 py-3 my-1 flex gap-6">
               <label className="flex items-center gap-2 text-sm font-semibold cursor-pointer">
-                <Switch checked={form.byAge} onCheckedChange={(v) => set('byAge', v)} />
+                <Switch 
+                  checked={form.byAge} 
+                  onCheckedChange={(v) => {
+                    setForm((f) => ({ ...f, byAge: v, byWeight: v ? false : f.byWeight }));
+                  }} 
+                />
                 <span>Create event by age</span>
               </label>
               <label className="flex items-center gap-2 text-sm font-semibold cursor-pointer">
-                <Switch checked={form.byWeight} onCheckedChange={(v) => set('byWeight', v)} />
+                <Switch 
+                  checked={form.byWeight} 
+                  onCheckedChange={(v) => {
+                    setForm((f) => ({ ...f, byWeight: v, byAge: v ? false : f.byAge }));
+                  }} 
+                />
                 <span>Create event by weight</span>
               </label>
             </div>

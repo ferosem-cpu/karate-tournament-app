@@ -42,22 +42,41 @@ export default function RegistrationDialog({ open, onOpenChange, tournament }) {
     if (!selected) return;
 
     const tCats = categories.filter((c) => !c.tournamentId || c.tournamentId === '__global__' || c.tournamentId === tournament?.id);
+    const isAthleteBlackBelt = selected.belt && (selected.belt.toLowerCase().startsWith('black') || selected.belt.toLowerCase().includes('dan'));
+    const ageVal = computeAge(selected.dateOfBirth);
+
     const matches = tCats.filter((c) => {
       // Gender match
       if (c.gender && c.gender !== 'Mixed' && selected.gender && c.gender.toLowerCase() !== selected.gender.toLowerCase()) {
         return false;
       }
+
+      // Black Belt check
+      const isBlackBeltCategory = c.beltMin === 'Black' || (c.name && c.name.toLowerCase().includes('black belt'));
+      if (isBlackBeltCategory) {
+        if (!isAthleteBlackBelt) return false;
+      } else {
+        if (isAthleteBlackBelt) {
+          // Black belt athlete can only match the Open category
+          const isOpenCategory = !c.byAge && !c.byWeight;
+          if (!isOpenCategory) return false;
+        }
+      }
+
       // Age match
-      const ageVal = computeAge(selected.dateOfBirth);
-      if (ageVal != null) {
+      if (c.byAge) {
+        if (ageVal == null) return false;
         if (c.ageMin !== '' && c.ageMin != null && ageVal < Number(c.ageMin)) return false;
         if (c.ageMax !== '' && c.ageMax != null && ageVal > Number(c.ageMax)) return false;
       }
+
       // Weight match
-      if (selected.weight != null && selected.weight !== '') {
+      if (c.byWeight) {
+        if (selected.weight == null || selected.weight === '') return false;
         if (c.weightMin !== '' && c.weightMin != null && Number(selected.weight) < Number(c.weightMin)) return false;
         if (c.weightMax !== '' && c.weightMax != null && Number(selected.weight) > Number(c.weightMax)) return false;
       }
+
       return true;
     });
 
@@ -70,6 +89,7 @@ export default function RegistrationDialog({ open, onOpenChange, tournament }) {
 
   const selectedAthlete = athletes.find((a) => a.id === athleteId);
   const athleteAge = selectedAthlete ? computeAge(selectedAthlete.dateOfBirth) : null;
+  const isAthleteBlackBelt = selectedAthlete?.belt && (selectedAthlete.belt.toLowerCase().startsWith('black') || selectedAthlete.belt.toLowerCase().includes('dan'));
 
   const tournamentCategories = categories.filter((c) => !c.tournamentId || c.tournamentId === '__global__' || c.tournamentId === tournament?.id);
 
@@ -79,16 +99,33 @@ export default function RegistrationDialog({ open, onOpenChange, tournament }) {
     if (c.gender && c.gender !== 'Mixed' && selectedAthlete.gender && c.gender.toLowerCase() !== selectedAthlete.gender.toLowerCase()) {
       return false;
     }
+
+    // Black Belt check
+    const isBlackBeltCategory = c.beltMin === 'Black' || (c.name && c.name.toLowerCase().includes('black belt'));
+    if (isBlackBeltCategory) {
+      if (!isAthleteBlackBelt) return false;
+    } else {
+      if (isAthleteBlackBelt) {
+        // Black belt athlete can only match the Open category
+        const isOpenCategory = !c.byAge && !c.byWeight;
+        if (!isOpenCategory) return false;
+      }
+    }
+
     // Age match
-    if (athleteAge != null) {
+    if (c.byAge) {
+      if (athleteAge == null) return false;
       if (c.ageMin !== '' && c.ageMin != null && athleteAge < Number(c.ageMin)) return false;
       if (c.ageMax !== '' && c.ageMax != null && athleteAge > Number(c.ageMax)) return false;
     }
+
     // Weight match
-    if (selectedAthlete.weight != null && selectedAthlete.weight !== '') {
+    if (c.byWeight) {
+      if (selectedAthlete.weight == null || selectedAthlete.weight === '') return false;
       if (c.weightMin !== '' && c.weightMin != null && Number(selectedAthlete.weight) < Number(c.weightMin)) return false;
       if (c.weightMax !== '' && c.weightMax != null && Number(selectedAthlete.weight) > Number(c.weightMax)) return false;
     }
+
     return true;
   });
 

@@ -100,21 +100,40 @@ export default function ParticipateTournamentDialog({ open, onOpenChange, tourna
   // Helper matching rule
   const getMatchingCategories = (athlete, categoriesList) => {
     const athleteAge = computeAge(athlete.dateOfBirth);
+    const isAthleteBlackBelt = athlete.belt && (athlete.belt.toLowerCase().startsWith('black') || athlete.belt.toLowerCase().includes('dan'));
+
     return categoriesList.filter((c) => {
       // Gender match
       if (c.gender && c.gender !== 'Mixed' && athlete.gender && c.gender.toLowerCase() !== athlete.gender.toLowerCase()) {
         return false;
       }
+
+      // Black Belt check
+      const isBlackBeltCategory = c.beltMin === 'Black' || (c.name && c.name.toLowerCase().includes('black belt'));
+      if (isBlackBeltCategory) {
+        if (!isAthleteBlackBelt) return false;
+      } else {
+        if (isAthleteBlackBelt) {
+          // Black belt athlete can only match the Open category
+          const isOpenCategory = !c.byAge && !c.byWeight;
+          if (!isOpenCategory) return false;
+        }
+      }
+
       // Age match
-      if (athleteAge != null) {
+      if (c.byAge) {
+        if (athleteAge == null) return false;
         if (c.ageMin !== '' && c.ageMin != null && athleteAge < Number(c.ageMin)) return false;
         if (c.ageMax !== '' && c.ageMax != null && athleteAge > Number(c.ageMax)) return false;
       }
+
       // Weight match
-      if (athlete.weight != null && athlete.weight !== '') {
+      if (c.byWeight) {
+        if (athlete.weight == null || athlete.weight === '') return false;
         if (c.weightMin !== '' && c.weightMin != null && Number(athlete.weight) < Number(c.weightMin)) return false;
         if (c.weightMax !== '' && c.weightMax != null && Number(athlete.weight) > Number(c.weightMax)) return false;
       }
+
       return true;
     });
   };
@@ -160,17 +179,33 @@ export default function ParticipateTournamentDialog({ open, onOpenChange, tourna
 
   const handleCheckboxChange = (athleteId, checked) => {
     setSelectedAthletes((prev) => ({ ...prev, [athleteId]: !!checked }));
+    if (checked) {
+      setAthleteSelections((prev) => {
+        const current = prev[athleteId] || [];
+        if (current.length === 0) {
+          const athlete = athletes.find((a) => a.id === athleteId);
+          const matches = athlete ? getMatchingCategories(athlete, categories) : [];
+          return { ...prev, [athleteId]: matches.map((m) => m.id) };
+        }
+        return prev;
+      });
+    } else {
+      setAthleteSelections((prev) => ({ ...prev, [athleteId]: [] }));
+    }
   };
 
   const toggleCategorySelection = (athleteId, categoryId) => {
-    // Automatically select the athlete if they are choosing a category
-    setSelectedAthletes((prev) => ({ ...prev, [athleteId]: true }));
-
     setAthleteSelections((prev) => {
       const current = prev[athleteId] || [];
       const updated = current.includes(categoryId)
         ? current.filter((id) => id !== categoryId)
         : [...current, categoryId];
+      
+      setSelectedAthletes((prevSelected) => ({
+        ...prevSelected,
+        [athleteId]: updated.length > 0
+      }));
+
       return { ...prev, [athleteId]: updated };
     });
   };
@@ -195,9 +230,14 @@ export default function ParticipateTournamentDialog({ open, onOpenChange, tourna
     return `Selected (${selectedIds.length})`;
   };
 
-  const filteredAthletes = athletes.filter((a) =>
-    (a.fullName || '').toLowerCase().includes(search.toLowerCase())
-  );
+  const filteredAthletes = athletes.filter((a) => {
+    const matches = getMatchingCategories(a, categories);
+    const athleteRegs = existingRegs.filter((r) => r.athleteId === a.id);
+    if (matches.length === 0 && athleteRegs.length === 0) {
+      return false;
+    }
+    return (a.fullName || '').toLowerCase().includes(search.toLowerCase());
+  });
 
   const handleSelectAll = () => {
     const updated = { ...selectedAthletes };
@@ -307,15 +347,9 @@ export default function ParticipateTournamentDialog({ open, onOpenChange, tourna
     const selectedIds = athleteSelections[athlete.id] || [];
     const isChecked = !!selectedAthletes[athlete.id];
 
-    const recommendedIds = new Set(matches.map((m) => m.id));
-    const otherCategories = categories.filter((c) => {
-      if (recommendedIds.has(c.id)) return false;
-      // Strict gender matching for other events dropdown list
-      if (c.gender && c.gender !== 'Mixed' && athlete.gender && c.gender.toLowerCase() !== athlete.gender.toLowerCase()) {
-        return false;
-      }
-      return true;
-    });
+    // Find any selected category that is not in the eligible categories (matches) list
+    const eligibleIds = new Set(matches.map((m) => m.id));
+    const extraSelectedCategories = categories.filter((c) => selectedIds.includes(c.id) && !eligibleIds.has(c.id));
 
     return (
       <DropdownMenu>
@@ -333,7 +367,7 @@ export default function ParticipateTournamentDialog({ open, onOpenChange, tourna
           {matches.length > 0 && (
             <>
               <DropdownMenuLabel className="text-[10px] uppercase tracking-wider text-primary">
-                Recommended Events
+                Eligible Events
               </DropdownMenuLabel>
               {matches.map((c) => (
                 <DropdownMenuCheckboxItem
@@ -351,18 +385,18 @@ export default function ParticipateTournamentDialog({ open, onOpenChange, tourna
             </>
           )}
 
-          {otherCategories.length > 0 && (
+          {extraSelectedCategories.length > 0 && (
             <>
               {matches.length > 0 && <DropdownMenuSeparator />}
-              <DropdownMenuLabel className="text-[10px] uppercase tracking-wider text-zinc-500">
-                Other Events
+              <DropdownMenuLabel className="text-[10px] uppercase tracking-wider text-amber-500">
+                Previously Registered
               </DropdownMenuLabel>
-              {otherCategories.map((c) => (
+              {extraSelectedCategories.map((c) => (
                 <DropdownMenuCheckboxItem
                   key={c.id}
                   checked={selectedIds.includes(c.id)}
                   onCheckedChange={() => toggleCategorySelection(athlete.id, c.id)}
-                  className="text-xs"
+                  className="text-xs text-amber-400"
                 >
                   <div className="flex flex-col">
                     <span className="font-medium">{c.name}</span>
@@ -373,7 +407,7 @@ export default function ParticipateTournamentDialog({ open, onOpenChange, tourna
             </>
           )}
 
-          {categories.length === 0 && (
+          {matches.length === 0 && extraSelectedCategories.length === 0 && (
             <div className="p-2 text-center text-xs text-zinc-500">No events available</div>
           )}
         </DropdownMenuContent>

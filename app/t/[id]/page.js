@@ -101,7 +101,7 @@ export default function PublicTournamentPage() {
 
     if (isSuperAdmin || (role === 'tournament_organizer' && isOwner)) {
       setRegOpen(true);
-    } else if (role === 'dojo_admin' || role === 'coach') {
+    } else if (role === 'dojo_admin' || role === 'coach' || (role === 'tournament_organizer' && !isOwner)) {
       setParticipateOpen(true);
     } else {
       toast.error('Only Dojo Admins and Coaches can register athletes. Apply for a role change in Settings to proceed.');

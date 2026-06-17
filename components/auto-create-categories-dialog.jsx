@@ -21,8 +21,8 @@ export default function AutoCreateCategoriesDialog({ open, onOpenChange, tournam
   const [genders, setGenders] = useState({ Male: true, Female: true });
   const [createByAge, setCreateByAge] = useState(true);
   const [createByWeight, setCreateByWeight] = useState(true);
-  const [ageDivisions, setAgeDivisions] = useState(STANDARD_AGE_DIVISIONS.slice(0, 6).map((a) => a.code));
-  const [weightDivisions, setWeightDivisions] = useState(STANDARD_WEIGHT_DIVISIONS.slice(0, 5).map((w) => w.code));
+  const [ageDivisions, setAgeDivisions] = useState(STANDARD_AGE_DIVISIONS.map((a) => a.code));
+  const [weightDivisions, setWeightDivisions] = useState(STANDARD_WEIGHT_DIVISIONS.map((w) => w.code));
 
   useEffect(() => {
     if (lockedTournamentId) {
@@ -35,23 +35,15 @@ export default function AutoCreateCategoriesDialog({ open, onOpenChange, tournam
       return toast.error('View-only: you cannot create event categories');
     }
     if (!tournamentId) return toast.error('Select a tournament');
-    if (!createByAge && !createByWeight) {
-      return toast.error('Please check at least "Create event by age" or "Create event by weight".');
-    }
+
     const eventList = Object.entries(events).filter(([_, v]) => v).map(([k]) => k === 'TeamKata' ? 'Team Kata' : k === 'TeamKumite' ? 'Team Kumite' : k);
     const genderList = Object.entries(genders).filter(([_, v]) => v).map(([k]) => k);
     
-    const selectedAgeDivs = createByAge ? STANDARD_AGE_DIVISIONS.filter((a) => ageDivisions.includes(a.code)) : [null];
-    const selectedWeightDivs = createByWeight ? STANDARD_WEIGHT_DIVISIONS.filter((w) => weightDivisions.includes(w.code)) : [null];
+    const selectedAgeDivs = createByAge ? STANDARD_AGE_DIVISIONS.filter((a) => ageDivisions.includes(a.code)) : [];
+    const selectedWeightDivs = createByWeight ? STANDARD_WEIGHT_DIVISIONS.filter((w) => weightDivisions.includes(w.code)) : [];
 
     if (eventList.length === 0 || genderList.length === 0) {
       return toast.error('Select at least one event and gender');
-    }
-    if (createByAge && selectedAgeDivs.length === 0) {
-      return toast.error('Select at least one age division');
-    }
-    if (createByWeight && selectedWeightDivs.length === 0) {
-      return toast.error('Select at least one weight division');
     }
 
     const t = tournaments.find((x) => x.id === tournamentId);
@@ -66,53 +58,22 @@ export default function AutoCreateCategoriesDialog({ open, onOpenChange, tournam
       const batch = writeBatch(db);
       let count = 0;
 
-      for (const g of genderList) {
-        for (const ev of eventList) {
-          const isKumite = ev.toLowerCase().includes('kumite');
-          
-          if (isKumite) {
+      // 1. Generate Age-wise Categories
+      if (createByAge) {
+        for (const g of genderList) {
+          for (const ev of eventList) {
             for (const ageDiv of selectedAgeDivs) {
-              for (const weightDiv of selectedWeightDivs) {
-                const nameParts = [];
-                if (ageDiv) nameParts.push(ageDiv.label);
-                nameParts.push(g);
-                nameParts.push(ev);
-                if (weightDiv) nameParts.push(weightDiv.label);
-
-                const ref = doc(collection(db, 'categories'));
-                batch.set(ref, {
-                  name: nameParts.join(' '),
-                  tournamentId: t.id, tournamentName: t.name,
-                  eventType: ev, gender: g,
-                  ageMin: ageDiv ? ageDiv.min : null, ageMax: ageDiv ? ageDiv.max : null,
-                  beltMin: '__any__', beltMax: '__any__',
-                  weightMin: weightDiv ? weightDiv.min : null, weightMax: weightDiv ? weightDiv.max : null,
-                  byAge: !!ageDiv, byWeight: !!weightDiv,
-                  description: `Auto-created · ${ageDiv ? ageDiv.code : ''}${weightDiv ? ' ' + weightDiv.code : ''}`.trim(),
-                  isActive: true, isTeamEvent: ev.startsWith('Team'),
-                  createdAt: serverTimestamp(), updatedAt: serverTimestamp(),
-                  createdBy: user.uid, ownerId: user.uid,
-                });
-                count++;
-              }
-            }
-          } else {
-            for (const ageDiv of selectedAgeDivs) {
-              const nameParts = [];
-              if (ageDiv) nameParts.push(ageDiv.label);
-              nameParts.push(g);
-              nameParts.push(ev);
-
+              const name = `${ageDiv.label} ${g} ${ev}`;
               const ref = doc(collection(db, 'categories'));
               batch.set(ref, {
-                name: nameParts.join(' '),
+                name,
                 tournamentId: t.id, tournamentName: t.name,
                 eventType: ev, gender: g,
-                ageMin: ageDiv ? ageDiv.min : null, ageMax: ageDiv ? ageDiv.max : null,
+                ageMin: ageDiv.min, ageMax: ageDiv.max,
                 beltMin: '__any__', beltMax: '__any__',
                 weightMin: null, weightMax: null,
-                byAge: !!ageDiv, byWeight: false,
-                description: `Auto-created · ${ageDiv ? ageDiv.code : ''}`.trim(),
+                byAge: true, byWeight: false,
+                description: `Auto-created Age-wise · ${ageDiv.code}`,
                 isActive: true, isTeamEvent: ev.startsWith('Team'),
                 createdAt: serverTimestamp(), updatedAt: serverTimestamp(),
                 createdBy: user.uid, ownerId: user.uid,
@@ -121,6 +82,74 @@ export default function AutoCreateCategoriesDialog({ open, onOpenChange, tournam
             }
           }
         }
+      }
+
+      // 2. Generate Weight-wise Categories (Kumite only)
+      if (createByWeight) {
+        for (const g of genderList) {
+          for (const ev of eventList) {
+            if (!ev.toLowerCase().includes('kumite')) continue;
+
+            for (const weightDiv of selectedWeightDivs) {
+              const name = `${g} ${ev} ${weightDiv.label}`;
+              const ref = doc(collection(db, 'categories'));
+              batch.set(ref, {
+                name,
+                tournamentId: t.id, tournamentName: t.name,
+                eventType: ev, gender: g,
+                ageMin: null, ageMax: null,
+                beltMin: '__any__', beltMax: '__any__',
+                weightMin: weightDiv.min, weightMax: weightDiv.max,
+                byAge: false, byWeight: true,
+                description: `Auto-created Weight-wise · ${weightDiv.code}`,
+                isActive: true, isTeamEvent: ev.startsWith('Team'),
+                createdAt: serverTimestamp(), updatedAt: serverTimestamp(),
+                createdBy: user.uid, ownerId: user.uid,
+              });
+              count++;
+            }
+          }
+        }
+      }
+
+      // 3. Generate one Open Category per event type (Mixed)
+      for (const ev of eventList) {
+        const name = `Open Mixed ${ev}`;
+        const ref = doc(collection(db, 'categories'));
+        batch.set(ref, {
+          name,
+          tournamentId: t.id, tournamentName: t.name,
+          eventType: ev, gender: 'Mixed',
+          ageMin: null, ageMax: null,
+          beltMin: '__any__', beltMax: '__any__',
+          weightMin: null, weightMax: null,
+          byAge: false, byWeight: false,
+          description: 'Open category for all ages and weights',
+          isActive: true, isTeamEvent: ev.startsWith('Team'),
+          createdAt: serverTimestamp(), updatedAt: serverTimestamp(),
+          createdBy: user.uid, ownerId: user.uid,
+        });
+        count++;
+      }
+
+      // 4. Generate one Black Belt Only Category per event type (Mixed)
+      for (const ev of eventList) {
+        const name = `Black Belt Mixed ${ev}`;
+        const ref = doc(collection(db, 'categories'));
+        batch.set(ref, {
+          name,
+          tournamentId: t.id, tournamentName: t.name,
+          eventType: ev, gender: 'Mixed',
+          ageMin: null, ageMax: null,
+          beltMin: 'Black', beltMax: 'Black',
+          weightMin: null, weightMax: null,
+          byAge: false, byWeight: false,
+          description: 'Black belts only category',
+          isActive: true, isTeamEvent: ev.startsWith('Team'),
+          createdAt: serverTimestamp(), updatedAt: serverTimestamp(),
+          createdBy: user.uid, ownerId: user.uid,
+        });
+        count++;
       }
 
       await batch.commit();
@@ -140,18 +169,20 @@ export default function AutoCreateCategoriesDialog({ open, onOpenChange, tournam
     if (numEvents === 0 || numGenders === 0) return 0;
 
     const eventList = Object.entries(events).filter(([_, v]) => v).map(([k]) => k);
-    const selectedAgeCount = createByAge ? ageDivisions.length : 1;
-    const selectedWeightCount = createByWeight ? weightDivisions.length : 1;
-
     let count = 0;
-    for (const ev of eventList) {
-      const isKumite = ev.toLowerCase().includes('kumite');
-      if (isKumite) {
-        count += numGenders * selectedAgeCount * selectedWeightCount;
-      } else {
-        count += numGenders * selectedAgeCount;
-      }
+    
+    // Age-wise
+    if (createByAge) {
+      count += numEvents * numGenders * ageDivisions.length;
     }
+    // Weight-wise (Kumite only)
+    if (createByWeight) {
+      const numKumiteEvents = eventList.filter(ev => ev.toLowerCase().includes('kumite')).length;
+      count += numKumiteEvents * numGenders * weightDivisions.length;
+    }
+    // Open & Black Belt categories
+    count += numEvents * 2;
+    
     return count;
   };
 
